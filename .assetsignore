@@ -1,0 +1,20 @@
+# Publish only application assets.
+*
+!index.html
+!app.js
+!board-persistence.js
+!draft-store.js
+!math.js
+!theme.js
+!pwa.js
+!sw.js
+!style.css
+!pwa.css
+!favicon.svg
+!manifest.webmanifest
+!_headers
+!icons/
+!icons/*.png
+!vendor/
+!vendor/pdf-lib.min.js
+!vendor/pdf-lib-LICENSE.md
