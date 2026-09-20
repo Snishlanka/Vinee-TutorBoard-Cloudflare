@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id),
   ctx = canvas.getContext('2d');
 const W = 2880,
   H = 1080,
-  colors = ['#ef4444', '#facc15', '#3b82f6', '#171717', '#ffffff', '#22c55e', '#a855f7', '#f97316'];
+  colors = ['#ef4444', '#facc15', '#3b82f6', '#171717', '#ffffff', '#22c55e'];
 let pages = [newPage()],
   index = 0,
   tool = 'pen',
