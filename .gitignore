@@ -1,2 +1,5 @@
 node_modules/
 .wrangler/
+
+# Local beginner/developer teaching guide
+/DEVELOPER_GUIDE.md
