@@ -54,6 +54,8 @@ PNG and PDF exports are intended for sharing; use the JSON file to resume editin
 
 ### Where to find the controls
 
+The browser right-click menu is disabled inside the board area. Use **Ctrl+V / Cmd+V** to paste a screenshot there.
+
 - **Workspace control bar:** page navigation, **+ Page**, **Undo**, **Redo**, **Insert image**, and the page/tools panel toggles. Text-formatting controls appear here when relevant. Undo, Redo, and Insert image remain available when the tools panel is hidden, including in presentation/fullscreen mode.
 - **Board toolbar:** Chalk, Eraser, Text, and Move, followed by ink colors and the Stroke control. Move sits immediately after Text; Stroke sits to the right of the ink colors when space permits.
 - **Tools panel:** Highlight, Line, Rectangle, Circle, Triangle, Parallelogram, and Arrow share the tool grid. Graph and geometry controls and selected-object editing options are also in this panel.

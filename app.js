@@ -1794,6 +1794,8 @@ var boardLayoutReady = true;
 let boardZoom = 1;
 const boardStage = document.querySelector('.board-stage'),
   boardWrap = document.querySelector('.board-wrap');
+// Keep browser context menus out of the drawing area.
+boardStage.addEventListener('contextmenu', (event) => event.preventDefault());
 function layoutBoard() {
   boardStage.style.overflow = boardZoom <= 1 ? 'hidden' : 'auto';
   const availableWidth = boardStage.offsetWidth,
