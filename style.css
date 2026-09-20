@@ -79,3 +79,39 @@ body .workspace,body.present .workspace{padding:8px}body .board-head{margin-bott
 [data-theme="dark"] #update-notice{color:#f4cd85}
 [data-theme="dark"] .state-error,[data-theme="dark"] #math-error{color:#ffa6ad}
 @media(max-width:600px){.board-toolbar{gap:6px;padding:6px}.ink-controls{border-left:0;padding-left:0;gap:6px}.ink-controls .section-head{display:none}.board-toolbar #colors{gap:4px}.board-toolbar #colors button{width:25px;height:25px}.quick-tools button{padding:6px 9px}}
+
+/* Keep drawing tools beside the page title and reserve height for the board. */
+body header{min-height:46px;padding:4px 10px;gap:8px}
+.brand{font-size:16px}.brand .mark{width:28px;height:28px;font-size:21px}
+.lesson-details #title{font-size:12px}.lesson-details #tutor-name{font-size:11px}
+.lesson-details #title,.lesson-details #tutor-name{width:180px;padding:2px 8px}
+.top-actions{gap:5px}.top-actions button{font-size:11px;padding:5px 7px}
+.workspace-controls{padding:4px 8px;gap:6px}
+.workspace-controls button{font-size:12px;padding:5px 8px}
+body .workspace,body.present .workspace{padding:6px}
+body .board-head{gap:8px;min-height:32px;margin-bottom:6px}
+.board-head>div:first-child{flex-shrink:0}.board-head h1{font-size:15px;white-space:nowrap}
+.board-head .board-toolbar{flex:1 1 auto;width:auto;min-width:0;gap:6px;padding:0;margin:0;border:0;border-radius:0;background:transparent}
+.board-head .quick-tools,.board-head .ink-controls{gap:5px}
+.board-head .quick-tools button{font-size:12px;padding:5px 7px;gap:4px;white-space:nowrap}
+.board-head .quick-tools button span{font-size:16px}
+.board-head .ink-controls{padding-left:7px}.board-head .ink-controls .section-head{font-size:9px;letter-spacing:.4px}
+.board-head #colors{gap:4px}.board-head #colors button{width:24px;height:24px}
+.board-head .custom-color{font-size:11px;gap:4px}.board-head input[type=color]{width:25px;height:23px}
+.board-head .paper-controls{gap:5px;margin-left:auto}
+.board-head .paper-controls button,.board-head .paper-controls select{font-size:11px;padding:5px 6px}
+.board-head .paper-controls label{font-size:11px}.zoom-controls{gap:4px}.zoom-controls output{font-size:11px;min-width:32px}
+.board-head #eraser-options{padding:5px;gap:6px}.board-head #eraser-options label,.board-head #eraser-mode{font-size:11px}
+body .workspace footer{padding:4px 0;font-size:10px}
+@media(max-width:1100px){
+ .board-head .paper-controls{flex-basis:100%;justify-content:flex-end}
+ .board-head .board-toolbar{flex:1 1 450px}
+}
+@media(max-width:600px){
+ body header{gap:6px}.top-actions button{flex:1 0 auto}
+ .board-head .board-toolbar{flex-basis:100%}
+ .board-head .quick-tools button{min-height:32px}
+ .board-head .ink-controls{border-left:0;padding-left:0}
+ .board-head #colors button{width:26px;height:26px}
+ .board-head .paper-controls{justify-content:flex-start;gap:5px}
+}
