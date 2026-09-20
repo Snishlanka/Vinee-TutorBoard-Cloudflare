@@ -49,6 +49,13 @@
         ><button id="next-page" aria-label="Next page">&#8594;</button
         ><button id="quick-add">+ Page</button>
       </div>
+      <div class="workspace-actions" role="group" aria-label="Edit lesson">
+        <button id="undo" title="Undo">↶ Undo</button>
+        <button id="redo" title="Redo">↷ Redo</button>
+        <button id="image" title="Add an exam question, then write your explanation on top.">
+          ＋ Insert image
+        </button>
+      </div>
       <div id="text-options" hidden role="group" aria-label="Text formatting">
         <label for="text-size">Text size</label
         ><button id="text-smaller" aria-label="Decrease text size">A-</button
@@ -84,7 +91,7 @@
           <div class="board-toolbar" role="group" aria-label="Drawing tools">
             <div class="quick-tools">
               <button data-tool="pen" class="active" title="Chalk (P)"><span>✎</span></button
-              ><button data-tool="eraser" title="Eraser (E)"><span>▱</span></button
+              ><button data-tool="eraser" title="Eraser (E)"><span>🧼</span></button
               ><button data-tool="text" title="Text (T)"><span>T</span></button
               ><button data-tool="move" title="Move an object"><span>✥</span></button>
             </div>
@@ -211,12 +218,7 @@
         <button id="graph-tools" class="insert">⌁ Graph & axes</button
         ><button id="geometry-tools" class="insert">△ Geometry diagrams</button>
         <div class="rule"></div>
-        <div class="history">
-          <button id="undo" title="Undo">↶ Undo</button
-          ><button id="redo" title="Redo">↷ Redo</button>
-        </div>
-        <button id="image" class="insert">＋ Insert image</button>
-        <p class="tip">Add an exam question, then write your explanation on top.</p>
+
         <div class="tool-bottom">MADE FOR YOUR NEXT LESSON</div>
       </aside>
     </main>

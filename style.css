@@ -1682,3 +1682,14 @@ body .workspace footer {
     width: 90px;
   }
 }
+
+/* Common editing actions remain available when the tools panel is hidden. */
+.workspace-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.workspace-actions button {
+  white-space: nowrap;
+}

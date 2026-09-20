@@ -52,6 +52,14 @@ Open the local address printed by Wrangler. There is no `package.json` or `npm r
 
 PNG and PDF exports are intended for sharing; use the JSON file to resume editing. Undo and redo history is not preserved in saved lesson files or restored drafts.
 
+### Where to find the controls
+
+- **Workspace control bar:** page navigation, **+ Page**, **Undo**, **Redo**, **Insert image**, and the page/tools panel toggles. Text-formatting controls appear here when relevant. Undo, Redo, and Insert image remain available when the tools panel is hidden, including in presentation/fullscreen mode.
+- **Board toolbar:** Chalk, Eraser, Text, and Move, followed by ink colors and the Stroke control. Move sits immediately after Text; Stroke sits to the right of the ink colors when space permits.
+- **Tools panel:** Highlight, Line, Rectangle, Circle, and Triangle share the tool grid. Graph and geometry controls and selected-object editing options are also in this panel.
+
+Controls wrap on smaller screens. Hover over icon-only buttons to see their tool names.
+
 ### Mathematics examples
 
 Enter one function per line, up to four functions per graph:
