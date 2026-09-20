@@ -52,7 +52,10 @@
       <div class="workspace-actions" role="group" aria-label="Edit lesson">
         <button id="undo" title="Undo">↶ Undo</button>
         <button id="redo" title="Redo">↷ Redo</button>
-        <button id="image" title="Add an exam question, then write your explanation on top.">
+        <button
+          id="image"
+          title="Insert an image file, or paste a copied screenshot onto the board with Ctrl+V / Cmd+V."
+        >
           ＋ Insert image
         </button>
       </div>
@@ -165,13 +168,17 @@
       <aside class="tools" id="tools-panel">
         <div class="section-head">TOOLS</div>
         <div class="tool-grid" id="tool-grid">
-          <button data-tool="highlighter" title="Highlighter (H)"><span>▰</span>Highlight</button
+          <button data-tool="highlighter" title="Highlighter (H)"><span>🖍</span>Highlight</button
           ><button data-tool="line" title="Straight line"><span>╱</span>Line</button
           ><button data-tool="rect" title="Rectangle"><span>□</span>Rectangle</button
           ><button data-tool="circle" title="Ellipse"><span>○</span>Circle</button
           ><button data-tool="triangle" id="triangle-tool" title="Draw triangle">
             <span>&#9651;</span>Triangle
           </button>
+          <button data-tool="parallelogram" title="Parallelogram">
+            <span>&#9649;</span>Parallelogram
+          </button>
+          <button data-tool="arrow" title="Arrow"><span>&#8599;</span>Arrow</button>
         </div>
         <div id="object-options" hidden>
           <div class="section-head" id="object-heading">SELECTED OBJECT</div>
@@ -193,6 +200,26 @@
             ><label
               >Point names<input id="object-names" placeholder="P, Q, R" maxlength="180" /></label
             ><button id="apply-names">Apply names</button>
+          </div>
+          <div id="shape-edit" hidden>
+            <label
+              >Rotation (degrees)<input id="shape-rotation" type="number" value="0" step="1"
+            /></label>
+            <div class="history">
+              <button id="shape-rotate-left">&#8630; 15&#176;</button
+              ><button id="shape-rotate-right">&#8631; 15&#176;</button>
+            </div>
+            <label
+              >Shape width<input id="shape-width" type="number" min="0" max="2880" step="1"
+            /></label>
+            <label
+              >Shape height<input id="shape-height" type="number" min="0" max="1080" step="1"
+            /></label>
+            <button id="apply-shape-size">Resize shape</button>
+            <p class="tip">
+              Use Move to select a shape. Drag its corner to resize proportionally, or enter width
+              and height here.
+            </p>
           </div>
           <div id="image-edit" hidden>
             <label

@@ -1693,3 +1693,7 @@ body .workspace footer {
 .workspace-actions button {
   white-space: nowrap;
 }
+
+.tools .tool-grid button[data-tool='parallelogram'] {
+  font-size: 10px;
+}

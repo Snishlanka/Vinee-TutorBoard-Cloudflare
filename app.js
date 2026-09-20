@@ -46,6 +46,24 @@ function toast(s) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 2500);
 }
+function isEditableShape(o) {
+  return !!o && ['rect', 'triangle', 'parallelogram', 'arrow'].includes(o.type);
+}
+function canTransform(o) {
+  return isEditableShape(o) || ['geometry', 'image'].includes(o.type);
+}
+function arrowPoints(o) {
+  const end = { x: o.x + o.w, y: o.y + o.h };
+  const angle = Math.atan2(o.h, o.w);
+  const head = Math.min(Math.hypot(o.w, o.h) * 0.3, Math.max(16, o.width * 4));
+  return [
+    end,
+    ...[-Math.PI / 6, Math.PI / 6].map((offset) => ({
+      x: end.x - head * Math.cos(angle + offset),
+      y: end.y - head * Math.sin(angle + offset),
+    })),
+  ];
+}
 function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) {
   if (o.erasures?.length && !skipErasures) {
     if (!eraseLayer) {
@@ -76,6 +94,11 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     return;
   }
   c.save();
+  if (isEditableShape(o) && o.rotation) {
+    c.translate(o.x + o.w / 2, o.y + o.h / 2);
+    c.rotate((o.rotation * Math.PI) / 180);
+    c.translate(-o.x - o.w / 2, -o.y - o.h / 2);
+  }
   c.strokeStyle = o.color;
   c.fillStyle = o.color;
   c.lineWidth = o.width;
@@ -119,6 +142,25 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     c.lineTo(o.x + o.w, o.y + o.h);
     c.lineTo(o.x, o.y + o.h);
     c.closePath();
+    c.stroke();
+  }
+  if (o.type === 'parallelogram') {
+    c.beginPath();
+    c.moveTo(o.x + o.w * 0.25, o.y);
+    c.lineTo(o.x + o.w, o.y);
+    c.lineTo(o.x + o.w * 0.75, o.y + o.h);
+    c.lineTo(o.x, o.y + o.h);
+    c.closePath();
+    c.stroke();
+  }
+  if (o.type === 'arrow') {
+    const [tip, left, right] = arrowPoints(o);
+    c.beginPath();
+    c.moveTo(o.x, o.y);
+    c.lineTo(tip.x, tip.y);
+    c.moveTo(left.x, left.y);
+    c.lineTo(tip.x, tip.y);
+    c.lineTo(right.x, right.y);
     c.stroke();
   }
   if (o.type === 'rect') c.strokeRect(o.x, o.y, o.w, o.h);
@@ -397,7 +439,7 @@ function hit(o, p) {
     )
   )
     return false;
-  if (['geometry', 'image'].includes(o.type) && o.rotation)
+  if (canTransform(o) && o.rotation)
     p = rotatePoint(p, { x: o.x + o.w / 2, y: o.y + o.h / 2 }, -o.rotation);
   const pad = 12 + o.width;
   if (o.points) {
@@ -405,6 +447,14 @@ function hit(o, p) {
     return o.points.some(
       (a, i) =>
         i && segmentDist(p, o.points[i - 1], a) < pad + (o.type === 'highlighter' ? o.width * 2 : 0)
+    );
+  }
+  if (o.type === 'arrow') {
+    const [tip, left, right] = arrowPoints(o);
+    return (
+      segmentDist(p, o, tip) < pad ||
+      segmentDist(p, tip, left) < pad ||
+      segmentDist(p, tip, right) < pad
     );
   }
   if (o.type === 'line')
@@ -424,7 +474,19 @@ function hit(o, p) {
   );
 }
 function objectBounds(o) {
-  if (['geometry', 'image'].includes(o.type) && o.rotation) {
+  if (o.type === 'arrow') {
+    const center = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
+    const points = [{ x: o.x, y: o.y }, ...arrowPoints(o)].map((p) =>
+      rotatePoint(p, center, o.rotation || 0)
+    );
+    return {
+      x: Math.min(...points.map((p) => p.x)) - o.width,
+      y: Math.min(...points.map((p) => p.y)) - o.width,
+      right: Math.max(...points.map((p) => p.x)) + o.width,
+      bottom: Math.max(...points.map((p) => p.y)) + o.width,
+    };
+  }
+  if (canTransform(o) && o.rotation) {
     const center = { x: o.x + o.w / 2, y: o.y + o.h / 2 },
       ps = [
         { x: o.x, y: o.y },
@@ -556,7 +618,7 @@ canvas.onpointerdown = (e) => {
       return;
     }
     const target = [...page().objects].reverse().find((o) => hit(o, p));
-    selected = target && ['geometry', 'image', 'text'].includes(target.type) ? target : null;
+    selected = target && (canTransform(target) || target.type === 'text') ? target : null;
     syncSelection();
     render();
     if (!target) return;
@@ -761,49 +823,97 @@ $('image').onclick = () => {
   commitText();
   $('image-file').click();
 };
-$('image-file').onchange = async (e) => {
-  const f = e.target.files[0];
-  if (!f) return;
-  if (f.size > 15 * 1024 * 1024) {
-    toast('Choose an image smaller than 15 MB.');
-    e.target.value = '';
+// File selection and screenshot paste share validation, resizing, and history.
+async function insertImageFile(file) {
+  if (!file) return;
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+    toast('Choose a PNG, JPEG, or WebP image.');
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const im = new Image();
-    im.onload = () => {
-      const ratio = Math.min(1, 900 / im.width, 600 / im.height);
-      const off = document.createElement('canvas');
-      off.width = Math.round(im.width * ratio);
-      off.height = Math.round(im.height * ratio);
-      off.getContext('2d').drawImage(im, 0, 0, off.width, off.height);
-      const src = off.toDataURL('image/png');
-      checkpoint();
-      page().objects.push({
-        type: 'image',
-        src,
-        x: 80,
-        y: 80,
-        w: off.width,
-        h: off.height,
-        color,
-        width,
-      });
-      render();
-      thumbnails();
-      setTool('move');
-      selected = page().objects.at(-1);
-      syncSelection();
-      render();
-      toast('Image added. Drag it to position, then choose Chalk.');
+  if (file.size > 15 * 1024 * 1024) {
+    toast('Choose an image smaller than 15 MB.');
+    return;
+  }
+  end();
+  commitText();
+  const targetPage = page();
+  try {
+    const source = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('This image could not be read.'));
+      reader.onabort = () => reject(new Error('Image loading was canceled.'));
+      reader.readAsDataURL(file);
+    });
+    const im = await new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('This image could not be opened.'));
+      image.src = source;
+    });
+    // Do not insert into another page if navigation happened during decoding.
+    if (page() !== targetPage) {
+      toast('The page changed. Insert or paste the image again on this page.');
+      return;
+    }
+    const ratio = Math.min(1, 900 / im.width, 600 / im.height);
+    const off = document.createElement('canvas');
+    off.width = Math.max(1, Math.round(im.width * ratio));
+    off.height = Math.max(1, Math.round(im.height * ratio));
+    off.getContext('2d').drawImage(im, 0, 0, off.width, off.height);
+    const src = off.toDataURL('image/png');
+    end();
+    commitText();
+    checkpoint();
+    const object = {
+      type: 'image',
+      src,
+      x: 80,
+      y: 80,
+      w: off.width,
+      h: off.height,
+      color,
+      width,
     };
-    im.onerror = () => toast('This image could not be opened.');
-    im.src = reader.result;
-  };
-  reader.readAsDataURL(f);
+    targetPage.objects.push(object);
+    setTool('move');
+    selected = object;
+    syncSelection();
+    render();
+    thumbnails();
+    toast('Image added. Drag it to position, then choose Chalk.');
+  } catch (error) {
+    toast(error.message || 'This image could not be opened.');
+  }
+}
+$('image-file').onchange = (e) => {
+  const file = e.target.files[0];
   e.target.value = '';
+  void insertImageFile(file);
 };
+function pasteImage(event) {
+  const target = event.target;
+  // Preserve normal text/form paste and avoid changing a board behind a dialog.
+  if (
+    event.defaultPrevented ||
+    target?.closest?.('input, textarea, select') ||
+    target?.isContentEditable ||
+    document.querySelector('dialog[open]')
+  )
+    return;
+  const clipboard = event.clipboardData;
+  if (!clipboard) return;
+  const file =
+    Array.from(clipboard.items || [])
+      .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+      .map((item) => item.getAsFile())
+      .find(Boolean) ||
+    Array.from(clipboard.files || []).find((file) => file.type.startsWith('image/'));
+  if (!file) return;
+  event.preventDefault();
+  void insertImageFile(file);
+}
+document.addEventListener('paste', pasteImage);
 function download(blob, name) {
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -854,6 +964,8 @@ function validObject(o) {
       'text',
       'image',
       'triangle',
+      'parallelogram',
+      'arrow',
       'graph',
       'geometry',
     ].includes(o.type) ||
@@ -880,6 +992,7 @@ function validObject(o) {
       ))
   )
     return false;
+  if (canTransform(o) && o.rotation !== undefined && !Number.isFinite(o.rotation)) return false;
   if (o.type === 'graph' || o.type === 'geometry') return TutorMath.valid(o);
   if (o.points)
     return (
@@ -1242,10 +1355,19 @@ function syncSelection() {
   $('object-options').hidden = !visible;
   $('geometry-edit').hidden = !visible || selected.type !== 'geometry';
   $('image-edit').hidden = !visible || selected.type !== 'image';
+  $('shape-edit').hidden = !visible || !isEditableShape(selected);
   if (!visible) return;
   $('object-heading').textContent =
-    selected.type === 'geometry' ? 'SELECTED DIAGRAM' : 'SELECTED IMAGE';
-  if (selected.type === 'geometry') {
+    selected.type === 'geometry'
+      ? 'SELECTED DIAGRAM'
+      : isEditableShape(selected)
+        ? 'SELECTED SHAPE'
+        : 'SELECTED IMAGE';
+  if (isEditableShape(selected)) {
+    $('shape-rotation').value = Math.round((selected.rotation || 0) * 100) / 100;
+    $('shape-width').value = Math.round(Math.abs(selected.w));
+    $('shape-height').value = Math.round(Math.abs(selected.h));
+  } else if (selected.type === 'geometry') {
     $('object-rotation').value = Math.round((selected.rotation || 0) * 100) / 100;
     $('object-names').value = (selected.pointNames || []).join(', ');
     $('diagram-size').value = Math.round(selected.w);
@@ -1273,8 +1395,7 @@ function drawSelection() {
   ctx.restore();
 }
 function changeRotation(degrees) {
-  if (!selected || !['geometry', 'image'].includes(selected.type) || !Number.isFinite(degrees))
-    return;
+  if (!selected || !canTransform(selected) || !Number.isFinite(degrees)) return;
   checkpoint();
   const next = normalizeRotation(degrees),
     delta = next - (selected.rotation || 0),
@@ -1334,14 +1455,72 @@ function resizeImage(o, old, w) {
     }));
   }
 }
+function resizeShape(o, old, w, h) {
+  const sx = Math.abs(old.w) > 0 ? w / Math.abs(old.w) : 1;
+  const sy = Math.abs(old.h) > 0 ? h / Math.abs(old.h) : 1;
+  o.w = (old.w < 0 ? -1 : 1) * w;
+  o.h = (old.h < 0 ? -1 : 1) * h;
+  o.x = old.x;
+  o.y = old.y;
+  if (old.erasures) {
+    const center = { x: old.x + old.w / 2, y: old.y + old.h / 2 };
+    const nextCenter = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
+    o.erasures = old.erasures.map((mask) => ({
+      ...mask,
+      radius: mask.radius * Math.sqrt(sx * sy),
+      points: mask.points.map((p) => {
+        const local = rotatePoint(p, center, -(old.rotation || 0));
+        return rotatePoint(
+          { x: old.x + (local.x - old.x) * sx, y: old.y + (local.y - old.y) * sy },
+          nextCenter,
+          old.rotation || 0
+        );
+      }),
+    }));
+  }
+}
+$('shape-rotation').onchange = (e) => changeRotation(+e.target.value);
+$('shape-rotate-left').onclick = () => changeRotation((selected?.rotation || 0) - 15);
+$('shape-rotate-right').onclick = () => changeRotation((selected?.rotation || 0) + 15);
+$('apply-shape-size').onclick = () => {
+  const w = +$('shape-width').value,
+    h = +$('shape-height').value;
+  if (!isEditableShape(selected)) return;
+  if (
+    !Number.isFinite(w) ||
+    !Number.isFinite(h) ||
+    w < 0 ||
+    h < 0 ||
+    w > W ||
+    h > H ||
+    Math.max(w, h) < 10 ||
+    (selected.type !== 'arrow' && Math.min(w, h) < 10)
+  ) {
+    toast('Choose shape dimensions from 10 to the board size. Arrows may have one zero dimension.');
+    return;
+  }
+  checkpoint();
+  resizeShape(selected, clone(selected), w, h);
+  syncSelection();
+  render();
+  thumbnails();
+};
 function resizeByPointer(o, old, p) {
   const center = { x: old.x + old.w / 2, y: old.y + old.h / 2 },
     anchor = rotatePoint({ x: old.x, y: old.y }, center, old.rotation || 0),
     corner = resizeCorner(old),
     dx = corner.x - anchor.x,
     dy = corner.y - anchor.y,
-    factor = ((p.x - anchor.x) * dx + (p.y - anchor.y) * dy) / (dx * dx + dy * dy);
-  resizeImage(o, old, old.w * factor);
+    factor = ((p.x - anchor.x) * dx + (p.y - anchor.y) * dy) / (dx * dx + dy * dy || 1);
+  if (isEditableShape(old)) {
+    const size = Math.max(Math.abs(old.w), Math.abs(old.h));
+    if (!size) return;
+    const scale = Math.max(
+      10 / size,
+      Math.min(factor, W / (Math.abs(old.w) || 1), H / (Math.abs(old.h) || 1))
+    );
+    resizeShape(o, old, Math.abs(old.w) * scale, Math.abs(old.h) * scale);
+  } else resizeImage(o, old, old.w * factor);
   const nextAnchor = rotatePoint(
       { x: o.x, y: o.y },
       { x: o.x + o.w / 2, y: o.y + o.h / 2 },

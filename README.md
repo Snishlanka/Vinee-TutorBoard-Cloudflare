@@ -60,6 +60,12 @@ PNG and PDF exports are intended for sharing; use the JSON file to resume editin
 
 Controls wrap on smaller screens. Hover over icon-only buttons to see their tool names.
 
+### Paste a screenshot
+
+Copy a screenshot to the clipboard (for example, with Windows Snipping Tool), return to TutorBoard, and press **Ctrl+V** on Windows/Linux or **Cmd+V** on macOS while focus is outside text fields. The image is added to the current page and Move is selected so you can position or resize it. Pasted images support Undo, local drafts, lesson files, and exports.
+
+PNG, JPEG, and WebP clipboard images are supported, with the same 15 MiB limit and resizing as Insert image. Normal text-field paste is preserved, and board paste is paused while a dialog is open. If the clipboard contains only a file path or text rather than image data, use **Insert image** instead.
+
 ### Mathematics examples
 
 Enter one function per line, up to four functions per graph:
@@ -84,6 +90,7 @@ Set the x and y ranges before inserting a graph. Leave the function field empty,
 | `E` | Eraser |
 | `T` | Text |
 | `V` | Move |
+| `Ctrl/Cmd + V` | Paste a copied image onto the board (outside text fields) |
 | `Ctrl/Cmd + Z` | Undo |
 | `Ctrl/Cmd + Shift + Z` | Redo |
 | `Ctrl/Cmd + S` | Download lesson JSON |
@@ -173,7 +180,7 @@ The configuration serves assets from the repository root, enables the `workers.d
 
 ## Development and verification
 
-Edit the static source files directly and preview them with a local server. Run the service worker regression checks with `node --test tests/sw.test.cjs`. This checkout does not include build scripts.
+Edit the static source files directly and preview them with a local server. Run the service worker and image-paste regression checks with `node --test tests/sw.test.cjs tests/image-paste.test.cjs`. This checkout does not include build scripts.
 
 `sw.js` contains a cache `REVISION` and an `ASSETS` list. When changing cached application files, update the cache revision before release; include new offline assets in both `ASSETS` and `.assetsignore`. Otherwise, returning users can continue receiving the previous cached application.
 
