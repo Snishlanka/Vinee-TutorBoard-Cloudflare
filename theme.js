@@ -1,0 +1,1 @@
+try{document.documentElement.dataset.theme=localStorage.getItem("tutorboard-theme")==="dark"?"dark":"light";}catch{}
