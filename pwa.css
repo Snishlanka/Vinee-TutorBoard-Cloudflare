@@ -1,28 +1,118 @@
 /* PWA controls remain outside the drawing surface and work in standalone mode. */
-[hidden]{display:none!important}
-#app-state{display:flex;flex-shrink:0;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:5px 12px max(5px,env(safe-area-inset-bottom));background:#f5faf7;border-top:1px solid #d8e6dc;font-size:12px;color:#3d6550}
-#app-state .state-labels,#app-state .state-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-#app-state button{font-size:12px;padding:5px 8px}
-.state-error{color:#a52b2b;font-weight:600}
-#update-notice{margin:0;width:100%;color:#735019}
-#draft-list{list-style:none;margin:16px 0;padding:0;max-height:45dvh;overflow:auto}
-#draft-list li{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid #dce2ec}
-#draft-list li>div{flex:1;min-width:0}
-#draft-list strong{display:block;overflow-wrap:anywhere}
-#draft-list small{display:block;color:#67758b;margin-top:5px}
-#install-dialog p,#install-dialog li,#drafts-dialog p{line-height:1.6}
-#install-dialog ul{padding-left:20px}
-header{padding-top:max(6px,env(safe-area-inset-top))!important}
-@media(max-width:600px){
-  .paper-controls{flex-wrap:wrap;justify-content:flex-start}
-  .zoom-controls{flex-wrap:wrap}
-  .lesson-details{flex:1;min-width:130px}
-  #app-state{padding-left:8px;padding-right:8px;gap:5px}
-  #app-state .state-labels{gap:6px;font-size:11px}
-  #app-state .state-actions{gap:5px}
-  body .tools,body .pages{top:var(--panel-top,160px);bottom:var(--panel-bottom,65px)}
-  #draft-list li{flex-wrap:wrap}
-  #draft-list li>div{flex-basis:100%}
-  #empty-hint span{font-size:13px!important;text-align:center}
-  #empty-hint small{display:none}
+[hidden] {
+  display: none !important;
+}
+#app-state {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 5px 12px max(5px, env(safe-area-inset-bottom));
+  background: #f5faf7;
+  border-top: 1px solid #d8e6dc;
+  font-size: 12px;
+  color: #3d6550;
+}
+#app-state .state-labels,
+#app-state .state-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+#app-state button {
+  font-size: 12px;
+  padding: 5px 8px;
+}
+.state-error {
+  color: #a52b2b;
+  font-weight: 600;
+}
+#update-notice {
+  margin: 0;
+  width: 100%;
+  color: #735019;
+}
+#draft-list {
+  list-style: none;
+  margin: 16px 0;
+  padding: 0;
+  max-height: 45dvh;
+  overflow: auto;
+}
+#draft-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid #dce2ec;
+}
+#draft-list li > div {
+  flex: 1;
+  min-width: 0;
+}
+#draft-list strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+#draft-list small {
+  display: block;
+  color: #67758b;
+  margin-top: 5px;
+}
+#install-dialog p,
+#install-dialog li,
+#drafts-dialog p {
+  line-height: 1.6;
+}
+#install-dialog ul {
+  padding-left: 20px;
+}
+header {
+  padding-top: max(6px, env(safe-area-inset-top)) !important;
+}
+@media (max-width: 600px) {
+  .paper-controls {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .zoom-controls {
+    flex-wrap: wrap;
+  }
+  .lesson-details {
+    flex: 1;
+    min-width: 130px;
+  }
+  #app-state {
+    padding-left: 8px;
+    padding-right: 8px;
+    gap: 5px;
+  }
+  #app-state .state-labels {
+    gap: 6px;
+    font-size: 11px;
+  }
+  #app-state .state-actions {
+    gap: 5px;
+  }
+  body .tools,
+  body .pages {
+    top: var(--panel-top, 160px);
+    bottom: var(--panel-bottom, 65px);
+  }
+  #draft-list li {
+    flex-wrap: wrap;
+  }
+  #draft-list li > div {
+    flex-basis: 100%;
+  }
+  #empty-hint span {
+    font-size: 13px !important;
+    text-align: center;
+  }
+  #empty-hint small {
+    display: none;
+  }
 }

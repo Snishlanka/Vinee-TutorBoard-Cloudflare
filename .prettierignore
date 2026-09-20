@@ -1,0 +1,4 @@
+# Keep bundled third-party libraries and generated/local files untouched.
+vendor/
+node_modules/
+.wrangler/

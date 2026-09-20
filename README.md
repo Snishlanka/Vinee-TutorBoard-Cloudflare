@@ -177,6 +177,19 @@ Before publishing changes, manually verify:
 - Restoring a local draft after reopening the app.
 - Reloading offline after **Ready offline**, and applying an update after all app windows close.
 
+### Source formatting
+
+Project source uses Prettier with the shared settings in `.prettierrc.json`.
+Bundled third-party files in `vendor/` are excluded through `.prettierignore`.
+
+```sh
+npx prettier@3.8.1 --write "*.js" "*.css" index.html "tests/*.cjs" wrangler.jsonc .prettierrc.json
+npx prettier@3.8.1 --write manifest.webmanifest --parser json
+npx prettier@3.8.1 --write favicon.svg --parser html
+```
+
+Use `--check` instead of `--write` to verify formatting without modifying files.
+
 ## Troubleshooting
 
 | Problem | What to check |
