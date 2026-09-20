@@ -1,5 +1,5 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = '20260920-navigation-fix';
+const REVISION = '7414590faed26e22';
 const ASSETS = ["index.html","theme.js","style.css","app.js","math.js","pwa.css","board-persistence.js","pwa.js","draft-store.js","manifest.webmanifest","favicon.svg","vendor/pdf-lib.min.js","icons/icon-192.png","icons/icon-512.png","icons/maskable-512.png","icons/apple-touch-icon.png"];
 'use strict';
 // Each deployment is an atomic app shell. Never mix old HTML with new scripts.
