@@ -1,4 +1,4 @@
-﻿# Vinee TutorBoard
+# Vinee TutorBoard
 
 A browser-based teaching whiteboard for writing, drawing, and explaining lessons. Create multi-page lessons, annotate exam questions, plot functions, and export material for students.
 
@@ -165,9 +165,9 @@ The configuration serves assets from the repository root, enables the `workers.d
 
 ## Development and verification
 
-Edit the static source files directly and preview them with a local server. This checkout does not include an automated test suite or build scripts.
+Edit the static source files directly and preview them with a local server. Run the service worker regression checks with `node --test tests/sw.test.cjs`. This checkout does not include build scripts.
 
-`sw.js` contains a cache `REVISION` and an `ASSETS` list. Its header references `scripts/build-pwa.cjs`, but that generator is not included in this checkout. When changing cached application files, update the cache revision before release; include new offline assets in both `ASSETS` and `.assetsignore`. Otherwise, returning users can continue receiving the previous cached application.
+`sw.js` contains a cache `REVISION` and an `ASSETS` list. When changing cached application files, update the cache revision before release; include new offline assets in both `ASSETS` and `.assetsignore`. Otherwise, returning users can continue receiving the previous cached application.
 
 Before publishing changes, manually verify:
 
