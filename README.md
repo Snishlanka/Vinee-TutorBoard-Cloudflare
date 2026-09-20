@@ -6,7 +6,7 @@ Built with HTML, CSS, and vanilla JavaScript, TutorBoard runs entirely in the br
 
 ## Features
 
-- **Drawing tools:** chalk, highlighter, straight lines, rectangles, ellipses, and triangles, with adjustable colors and stroke widths.
+- **Drawing tools:** chalk, highlighter, straight lines, rectangles, ellipses, triangles, parallelograms, and arrows, with adjustable colors and stroke widths.
 - **Flexible erasing:** erase an area or remove a whole object; undo and redo board edits.
 - **Text and images:** enter Sinhala or English text, adjust size, bold and underline, and insert PNG, JPEG, or WebP images. Move objects and resize or rotate images.
 - **Lesson pages:** create and delete pages, navigate with thumbnails, and choose blank, grid, or ruled paper on white, black, green, or blue boards.
@@ -39,7 +39,7 @@ Open the local address printed by Wrangler. There is no `package.json` or `npm r
 
 1. Enter a lesson title and, optionally, the tutor's name.
 2. Choose the board color and paper style, then use Chalk, Text, or Insert image to add content.
-3. Add pages with **+ Page**, and use **Show pages** to browse the lesson.
+3. Use **+ Page** to insert a page immediately after the current page. Open **Show pages** to browse, then use **Move earlier** or **Move later** to reorder the selected page.
 4. Open **Graph & axes** or **Geometry diagrams** to insert mathematics content. Use **Move** to position it.
 5. Use **Present** or **Full screen** when teaching or sharing your screen.
 6. Choose **Save lesson** to keep an editable backup. Use **Open lesson** to continue from that JSON file later.
@@ -56,9 +56,21 @@ PNG and PDF exports are intended for sharing; use the JSON file to resume editin
 
 - **Workspace control bar:** page navigation, **+ Page**, **Undo**, **Redo**, **Insert image**, and the page/tools panel toggles. Text-formatting controls appear here when relevant. Undo, Redo, and Insert image remain available when the tools panel is hidden, including in presentation/fullscreen mode.
 - **Board toolbar:** Chalk, Eraser, Text, and Move, followed by ink colors and the Stroke control. Move sits immediately after Text; Stroke sits to the right of the ink colors when space permits.
-- **Tools panel:** Highlight, Line, Rectangle, Circle, and Triangle share the tool grid. Graph and geometry controls and selected-object editing options are also in this panel.
+- **Tools panel:** Highlight, Line, Rectangle, Circle, Triangle, Parallelogram, and Arrow share the tool grid. Graph and geometry controls and selected-object editing options are also in this panel.
 
 Controls wrap on smaller screens. Hover over icon-only buttons to see their tool names.
+
+### Resize and rotate shapes
+
+Choose Rectangle, Triangle, Parallelogram, or Arrow and drag to draw. An arrow points from the start of the drag to the end. Select **Move**, then click the shape. Open **Show tools** if needed to access the shape controls.
+
+Set **Rotation (degrees)** or use the 15-degree buttons. Drag the corner handle to resize proportionally, or enter **Shape width** and **Shape height** and choose **Resize shape**. Horizontal or vertical arrows can have one zero dimension. Transformations support Undo/Redo, local drafts, lesson files, and exports. Older app versions do not recognize the new shape types.
+
+### Page order and paper controls
+
+In **Show pages**, select a page and use **Move earlier** or **Move later**. Its content and editing history move with it. New pages from any Add Page button are inserted immediately after the selected page and inherit its paper and board color. Saved lessons, drafts, and PDF exports follow the new page order.
+
+Use **Hide paper controls** in the workspace bar to hide the whole row above the board, including drawing tools, ink colors, stroke, zoom, board color, paper style, and Clear page. The board automatically refits to the freed space while preserving its proportions. **Show paper controls** restores the row. This changes visibility without changing the lesson's paper settings; the panel starts visible when the app is reopened.
 
 ### Paste a screenshot
 
@@ -180,7 +192,7 @@ The configuration serves assets from the repository root, enables the `workers.d
 
 ## Development and verification
 
-Edit the static source files directly and preview them with a local server. Run the service worker and image-paste regression checks with `node --test tests/sw.test.cjs tests/image-paste.test.cjs`. This checkout does not include build scripts.
+Edit the static source files directly and preview them with a local server. Run the service worker, image-paste, shape, and page-control regression checks with `node --test tests/sw.test.cjs tests/image-paste.test.cjs tests/shapes.test.cjs tests/pages.test.cjs`. This checkout does not include build scripts.
 
 `sw.js` contains a cache `REVISION` and an `ASSETS` list. When changing cached application files, update the cache revision before release; include new offline assets in both `ASSETS` and `.assetsignore`. Otherwise, returning users can continue receiving the previous cached application.
 

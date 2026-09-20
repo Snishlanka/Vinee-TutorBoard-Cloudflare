@@ -74,6 +74,9 @@
         ><button id="text-bold" aria-pressed="false" title="Bold"><b>B</b></button
         ><button id="text-underline" aria-pressed="false" title="Underline"><u>U</u></button>
       </div>
+      <button id="toggle-paper" aria-controls="board-controls" aria-expanded="true">
+        Hide paper controls
+      </button>
       <button id="toggle-tools" aria-controls="tools-panel" aria-expanded="true">Hide tools</button>
     </nav>
     <main>
@@ -81,12 +84,20 @@
         <div class="section-head">
           <span>LESSON PAGES</span><button id="add" aria-label="Add page">＋</button>
         </div>
+        <div class="page-order-controls" role="group" aria-label="Reorder current page">
+          <button id="move-page-earlier" title="Move the current page earlier in the lesson">
+            &#8593; Move earlier
+          </button>
+          <button id="move-page-later" title="Move the current page later in the lesson">
+            &#8595; Move later
+          </button>
+        </div>
         <div id="page-list"></div>
         <button id="add-bottom" class="new-page">＋ New page</button>
         <div class="side-note">Your space to explain.<br />One step at a time.</div>
       </aside>
       <section class="workspace">
-        <div class="board-head">
+        <div class="board-head" id="board-controls">
           <div>
             <span class="eyebrow">YOUR WHITEBOARD</span>
             <h1 id="page-title">Page 1</h1>
@@ -120,7 +131,12 @@
               ><input id="eraser-size" type="range" min="8" max="100" value="24" />
             </div>
           </div>
-          <div class="paper-controls">
+          <div
+            class="paper-controls"
+            id="paper-controls"
+            role="group"
+            aria-label="Paper and board controls"
+          >
             <div class="zoom-controls" role="group" aria-label="Board zoom">
               <button id="zoom-out" aria-label="Zoom out">&#8722;</button
               ><output id="zoom-level" aria-live="polite">Fit</output

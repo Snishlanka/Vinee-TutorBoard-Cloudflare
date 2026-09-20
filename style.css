@@ -1697,3 +1697,16 @@ body .workspace footer {
 .tools .tool-grid button[data-tool='parallelogram'] {
   font-size: 10px;
 }
+
+.page-order-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.page-order-controls button {
+  font-size: 12px;
+  padding: 6px;
+}
+#paper-controls[hidden] {
+  display: none;
+}

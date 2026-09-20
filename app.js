@@ -757,11 +757,25 @@ $('text-editor').onblur = (e) => {
   if (!e.relatedTarget?.closest('#text-options')) commitText();
 };
 function add() {
+  end();
   commitText();
-  pages.push(newPage(page()));
-  index = pages.length - 1;
+  pages.splice(index + 1, 0, newPage(page()));
+  index++;
   update();
 }
+function moveCurrentPage(offset) {
+  const destination = index + offset;
+  if (!Number.isInteger(destination) || destination < 0 || destination >= pages.length) return;
+  end();
+  commitText();
+  const active = pages.splice(index, 1)[0];
+  pages.splice(destination, 0, active);
+  index = destination;
+  update();
+  toast('Page moved to position ' + (index + 1) + '.');
+}
+$('move-page-earlier').onclick = () => moveCurrentPage(-1);
+$('move-page-later').onclick = () => moveCurrentPage(1);
 $('add').onclick = add;
 $('add-bottom').onclick = add;
 $('board-color').onchange = (e) => {
@@ -1100,10 +1114,22 @@ for (const kind of ['pages', 'tools'])
     document.body.classList.toggle(kind + '-hidden');
     syncPanels();
   };
+function togglePaperControls() {
+  const panel = $('paper-controls');
+  panel.hidden = !panel.hidden;
+  // Collapse the entire heading row, including drawing tools, to free board height.
+  $('board-controls').hidden = panel.hidden;
+  $('toggle-paper').textContent = panel.hidden ? 'Show paper controls' : 'Hide paper controls';
+  $('toggle-paper').setAttribute('aria-expanded', String(!panel.hidden));
+  if (boardLayoutReady) layoutBoard();
+}
+$('toggle-paper').onclick = togglePaperControls;
 function syncPageNavigation() {
   $('page-position').textContent = index + 1 + ' / ' + pages.length;
   $('previous-page').disabled = index === 0;
   $('next-page').disabled = index === pages.length - 1;
+  $('move-page-earlier').disabled = index === 0;
+  $('move-page-later').disabled = index === pages.length - 1;
 }
 $('previous-page').onclick = () => {
   if (index > 0) {
