@@ -87,7 +87,7 @@ Choose **Text box (T)** and drag on the board to set its size (a click uses the 
 
 Select a text box by clicking it to resize or format it. Choose **Edit text** (also available on touch screens), or double-click the text, to edit its contents. Escape cancels an active edit. The empty-board welcome message is hidden while a text box is being created or edited, and only returns when the board is empty with no pending text.
 
-Select any object by clicking it and press **Delete**, or use the toolbar **Delete** button. Undo restores it. Delete inside a text field edits text normally.
+Select any object by clicking it and press **Delete**, or use the toolbar **Delete** button. Undo restores it. Changing the board color or reordering the current page keeps the selected object available for Delete. Switching to another page clears the selection. Delete inside a text field edits text normally.
 
 Click the **Eraser** dropdown to choose **Point eraser** or **Whole object**. Point erasing exposes a size slider; Whole object disables that slider.
 

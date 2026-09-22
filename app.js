@@ -459,7 +459,8 @@ $('delete-page-dialog').addEventListener('cancel', () => {
 
 function update() {
   syncPageNavigation();
-  selected = null;
+  // Appearance changes and page reordering must retain a valid selection.
+  if (!page().objects.includes(selected)) selected = null;
   syncSelection();
   activePointer = null;
   pointerSnapshot = null;
