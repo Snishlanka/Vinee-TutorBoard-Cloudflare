@@ -23,7 +23,8 @@
     <header>
       <div class="brand"><span class="mark">V</span><strong>Vinee TutorBoard</strong></div>
       <div class="lesson-details">
-        <input id="title" aria-label="Lesson title" value="Untitled lesson" maxlength="100" /><input
+        <input id="title" aria-label="Lesson title" value="Untitled lesson" maxlength="100" />
+        <input
           id="tutor-name"
           aria-label="Tutor name"
           placeholder="Tutor name"
@@ -42,9 +43,7 @@
     </header>
     <nav class="workspace-controls" aria-label="Board controls">
       <div class="panel-controls">
-        <button id="toggle-pages" aria-controls="pages-panel" aria-expanded="false">
-          Show pages</button
-        ><button id="previous-page" aria-label="Previous page">&#8592;</button
+        <button id="previous-page" aria-label="Previous page">&#8592;</button
         ><span id="page-position">1 / 1</span
         ><button id="next-page" aria-label="Next page">&#8594;</button
         ><button id="quick-add">+ Page</button>
@@ -52,6 +51,7 @@
       <div class="workspace-actions" role="group" aria-label="Edit lesson">
         <button id="undo" title="Undo">↶ Undo</button>
         <button id="redo" title="Redo">↷ Redo</button>
+        <button id="delete-object" title="Delete selected object (Delete)" disabled>Delete</button>
         <button
           id="image"
           title="Insert an image file, or paste a copied screenshot onto the board with Ctrl+V / Cmd+V."
@@ -60,6 +60,10 @@
         </button>
       </div>
       <div id="text-options" hidden role="group" aria-label="Text formatting">
+        <button id="text-edit-selected" hidden>Edit text</button>
+        <label class="text-border-option"
+          ><input id="text-border" type="checkbox" checked /> Border</label
+        >
         <label for="text-size">Text size</label
         ><button id="text-smaller" aria-label="Decrease text size">A-</button
         ><input
@@ -73,12 +77,44 @@
         /><button id="text-larger" aria-label="Increase text size">A+</button
         ><button id="text-bold" aria-pressed="false" title="Bold"><b>B</b></button
         ><button id="text-underline" aria-pressed="false" title="Underline"><u>U</u></button>
+        <select id="text-list" aria-label="List style">
+          <option value="none">No list</option>
+          <option value="bullet">Bullets</option>
+          <option value="number">Numbering</option>
+        </select>
+        <select id="text-align" aria-label="Text alignment">
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+        <select id="text-spacing" aria-label="Line spacing">
+          <option value="1">Single spacing</option>
+          <option value="1.35" selected>Normal spacing</option>
+          <option value="1.5">1.5 spacing</option>
+          <option value="2">Double spacing</option>
+        </select>
       </div>
-      <button id="toggle-paper" aria-controls="board-controls" aria-expanded="true">
-        Hide paper controls
-      </button>
-      <button id="toggle-tools" aria-controls="tools-panel" aria-expanded="true">Hide tools</button>
     </nav>
+    <button
+      id="toggle-pages"
+      class="panel-edge-toggle panel-edge-left"
+      aria-controls="pages-panel"
+      aria-expanded="false"
+      aria-label="Show pages"
+      title="Show pages"
+    >
+      &#8250;
+    </button>
+    <button
+      id="toggle-tools"
+      class="panel-edge-toggle panel-edge-right"
+      aria-controls="tools-panel"
+      aria-expanded="true"
+      aria-label="Hide tools"
+      title="Hide tools"
+    >
+      &#8250;
+    </button>
     <main>
       <aside class="pages" id="pages-panel">
         <div class="section-head">
@@ -104,10 +140,46 @@
           </div>
           <div class="board-toolbar" role="group" aria-label="Drawing tools">
             <div class="quick-tools">
-              <button data-tool="pen" class="active" title="Chalk (P)"><span>✎</span></button
-              ><button data-tool="eraser" title="Eraser (E)"><span>🧼</span></button
-              ><button data-tool="text" title="Text (T)"><span>T</span></button
-              ><button data-tool="move" title="Move an object"><span>✥</span></button>
+              <button data-tool="pen" class="active" title="Chalk (P)"><span>✎</span></button>
+              <div id="eraser-picker">
+                <button
+                  id="eraser-toggle"
+                  data-tool="eraser"
+                  aria-expanded="false"
+                  aria-controls="eraser-menu"
+                  title="Eraser mode (E)"
+                >
+                  <span>&#129533;</span>&#9662;
+                </button>
+                <div id="eraser-menu" hidden role="group" aria-label="Eraser mode">
+                  <button data-eraser-mode="point" aria-pressed="true">Point eraser</button>
+                  <button data-eraser-mode="object" aria-pressed="false">Whole object</button>
+                  <label for="eraser-size">Size <span id="eraser-size-value">24 px</span></label>
+                  <input id="eraser-size" type="range" min="8" max="100" value="24" />
+                </div>
+              </div>
+              <button
+                data-tool="text"
+                title="Text box (T): drag to size, then type"
+                aria-label="Text box"
+              >
+                <span>T</span>
+              </button>
+              <div id="connector-picker">
+                <button
+                  id="connector-toggle"
+                  aria-expanded="false"
+                  aria-controls="connector-menu"
+                  title="Choose line or arrow"
+                >
+                  &#8599; &#9662;
+                </button>
+                <div id="connector-menu" hidden role="group" aria-label="Connector type">
+                  <button data-tool="line"><span>&#9585;</span>Line</button>
+                  <button data-tool="arrow"><span>&#8599;</span>Arrow</button>
+                </div>
+              </div>
+              <button data-tool="move" title="Move an object (V)"><span>&#10021;</span></button>
             </div>
             <div class="ink-controls" role="group" aria-label="Ink color">
               <div class="section-head"></div>
@@ -121,14 +193,6 @@
               <label class="section-head" for="width"> <span id="width-value">3 px</span></label
               ><input id="width" type="range" min="1" max="24" value="3" />
               <div class="stroke-preview"><span id="stroke-dot"></span></div>
-            </div>
-            <div id="eraser-options" hidden>
-              <label for="eraser-mode">Eraser mode</label
-              ><select id="eraser-mode">
-                <option value="point">Point · erase an area</option>
-                <option value="object">Whole object</option></select
-              ><label for="eraser-size">Size <span id="eraser-size-value">24 px</span></label
-              ><input id="eraser-size" type="range" min="8" max="100" value="24" />
             </div>
           </div>
           <div
@@ -158,6 +222,16 @@
           </div>
         </div>
 
+        <button
+          id="toggle-paper"
+          class="panel-edge-toggle paper-edge-toggle"
+          aria-controls="board-controls"
+          aria-expanded="true"
+          aria-label="Hide paper controls"
+          title="Hide paper controls"
+        >
+          &#9652;
+        </button>
         <div class="board-stage">
           <div class="board-wrap">
             <canvas id="board" width="2880" height="1080" aria-label="Drawing whiteboard"></canvas>
@@ -168,7 +242,7 @@
             <textarea
               maxlength="10000"
               id="text-editor"
-              placeholder="Type in Sinhala or English…"
+              placeholder="Type your Text…"
               aria-label="Text to place on board"
               hidden
             ></textarea
@@ -183,18 +257,20 @@
       </section>
       <aside class="tools" id="tools-panel">
         <div class="section-head">TOOLS</div>
+        <label for="input-mode">Drawing input</label>
+        <select id="input-mode" aria-describedby="input-hint">
+          <option value="auto">Auto detect</option>
+          <option value="pen">Pen only</option>
+          <option value="touch">Finger drawing</option>
+        </select>
+        <p id="input-hint" class="side-note">Touch drawing turns off when a stylus is detected</p>
         <div class="tool-grid" id="tool-grid">
           <button data-tool="highlighter" title="Highlighter (H)"><span>🖍</span>Highlight</button
-          ><button data-tool="line" title="Straight line"><span>╱</span>Line</button
           ><button data-tool="rect" title="Rectangle"><span>□</span>Rectangle</button
           ><button data-tool="circle" title="Ellipse"><span>○</span>Circle</button
           ><button data-tool="triangle" id="triangle-tool" title="Draw triangle">
             <span>&#9651;</span>Triangle
           </button>
-          <button data-tool="parallelogram" title="Parallelogram">
-            <span>&#9649;</span>Parallelogram
-          </button>
-          <button data-tool="arrow" title="Arrow"><span>&#8599;</span>Arrow</button>
         </div>
         <div id="object-options" hidden>
           <div class="section-head" id="object-heading">SELECTED OBJECT</div>
@@ -233,8 +309,9 @@
             /></label>
             <button id="apply-shape-size">Resize shape</button>
             <p class="tip">
-              Use Move to select a shape. Drag its corner to resize proportionally, or enter width
-              and height here.
+              Drag corner handles to resize (Shift keeps proportions), the round handle to rotate,
+              and the gold handle to bend arrows, slant rectangles, or move the triangle top point.
+              Or enter width and height here.
             </p>
           </div>
           <div id="image-edit" hidden>
@@ -325,8 +402,7 @@
           placeholder="x^2
 2*x + 1"
         >
-x^2</textarea
-        >
+x^2</textarea>
         <p class="math-help">
           One function per line (up to 4). Examples: x^2, 2x+1, sin(x), sqrt(x), 1/x. Trigonometric
           functions use radians.

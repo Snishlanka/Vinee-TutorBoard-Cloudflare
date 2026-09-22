@@ -903,8 +903,9 @@ header {
 
 .lesson-details {
   display: flex;
-  flex-direction: column;
-  min-width: 140px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 .lesson-details #title,
 .lesson-details #tutor-name {
@@ -978,9 +979,6 @@ header {
 #page-position {
   font-size: 13px;
   white-space: nowrap;
-}
-#toggle-tools {
-  margin-left: auto;
 }
 body main,
 body.present main {
@@ -1694,10 +1692,6 @@ body .workspace footer {
   white-space: nowrap;
 }
 
-.tools .tool-grid button[data-tool='parallelogram'] {
-  font-size: 10px;
-}
-
 .page-order-controls {
   display: flex;
   flex-direction: column;
@@ -1709,4 +1703,161 @@ body .workspace footer {
 }
 #paper-controls[hidden] {
   display: none;
+}
+
+/* Board object editing */
+#connector-picker,
+#eraser-picker {
+  display: flex;
+}
+#connector-menu,
+#eraser-menu {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  gap: 4px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid #d9e2ed;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px #17223126;
+}
+#connector-menu[hidden],
+#eraser-menu[hidden] {
+  display: none;
+}
+.board-head #connector-menu button,
+.board-head #eraser-menu button {
+  width: 100%;
+  justify-content: flex-start;
+}
+[data-theme='dark'] #connector-menu,
+[data-theme='dark'] #eraser-menu {
+  background: #172231;
+  border-color: #43546c;
+}
+#text-options {
+  flex-wrap: wrap;
+}
+#text-options select {
+  max-width: 150px;
+}
+#text-editor {
+  resize: both;
+  min-width: 40px;
+  min-height: 20px;
+  border: 2px dashed #16834a;
+  box-sizing: border-box;
+}
+
+#input-mode {
+  width: 100%;
+  margin-top: 6px;
+}
+#input-hint {
+  padding: 4px 0 12px;
+  margin: 0;
+  font-size: 11px;
+}
+#board {
+  touch-action: none;
+}
+
+.board-head #eraser-menu label {
+  font-size: 12px;
+  padding: 4px;
+}
+.board-head #eraser-menu label span {
+  font-size: inherit;
+}
+#eraser-menu input {
+  width: 140px;
+}
+#eraser-menu button[aria-pressed='true'] {
+  background: #e8f5ed;
+  color: #126c3d;
+}
+
+.quick-tools button[data-tool='text'] span {
+  border: 1px solid currentColor;
+  padding: 0 3px;
+  font-size: 13px;
+}
+
+#text-options .text-border-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+#text-border {
+  width: auto;
+  margin: 0;
+}
+
+/* Compact panel toggles remain reachable with either sidebar collapsed. */
+.panel-edge-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #d2dfd8;
+  background: #fff;
+  color: #16834a;
+  font-size: 20px;
+  line-height: 1;
+  box-shadow: 0 2px 8px #17223118;
+  touch-action: manipulation;
+}
+.panel-edge-left {
+  left: env(safe-area-inset-left, 0px);
+  border-radius: 0 9px 9px 0;
+}
+.panel-edge-right {
+  right: env(safe-area-inset-right, 0px);
+  border-radius: 9px 0 0 9px;
+}
+.panel-edge-toggle:hover {
+  background: #e8f5ed;
+}
+.panel-edge-toggle:focus-visible {
+  outline: 2px solid #16834a;
+  outline-offset: 2px;
+}
+[data-theme='dark'] .panel-edge-toggle {
+  background: #172231;
+  color: #7cdbab;
+  border-color: #43546c;
+}
+[data-theme='dark'] .panel-edge-toggle:hover {
+  background: #24394a;
+}
+
+.paper-edge-toggle {
+  position: fixed;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 18px;
+  margin: 0;
+  border-radius: 0 0 6px 6px;
+  font-size: 15px;
+  z-index: 9;
+}
+
+/* The paper toggle sits on the controls row's board-facing edge. */
+body .board-head {
+  margin-bottom: 0;
+}
+
+/* Overlay the small arrow instead of reserving a blank row above the board. */
+body .workspace,
+body.present .workspace {
+  padding-top: 0;
 }

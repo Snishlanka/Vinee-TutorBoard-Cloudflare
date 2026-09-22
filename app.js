@@ -4,7 +4,7 @@ const $ = (id) => document.getElementById(id),
   ctx = canvas.getContext('2d');
 const W = 2880,
   H = 1080,
-  colors = ['#ef4444', '#facc15', '#3b82f6', '#171717', '#ffffff', '#22c55e'];
+  colors = ['#facc15', '#ef4444', '#ffffff', '#171717', '#3b82f6'];
 let pages = [newPage()],
   index = 0,
   tool = 'pen',
@@ -19,7 +19,20 @@ let pages = [newPage()],
 let eraseLayer = null,
   selected = null,
   pendingPageDelete = null;
-let textStyle = { fontSize: 28, bold: false, underline: false };
+let activePointer = null;
+let inputMode = 'auto';
+let penSeen = false;
+let pointerSnapshot = null;
+let editingText = null;
+let textStyle = {
+  fontSize: 28,
+  bold: false,
+  underline: false,
+  list: 'none',
+  align: 'left',
+  spacing: 1.35,
+  border: true,
+};
 function newPage(settings = {}) {
   return {
     background: settings.background || 'blank',
@@ -47,14 +60,85 @@ function toast(s) {
   toastTimer = setTimeout(() => $('toast').classList.remove('visible'), 2500);
 }
 function isEditableShape(o) {
-  return !!o && ['rect', 'triangle', 'parallelogram', 'arrow'].includes(o.type);
+  return !!o && ['rect', 'circle', 'line', 'triangle', 'parallelogram', 'arrow'].includes(o.type);
 }
 function canTransform(o) {
   return isEditableShape(o) || ['geometry', 'image'].includes(o.type);
 }
+// Midpoint quadratic interpolation keeps the stroke inside its sampled path
+// and works identically for live ink, thumbnails, PNG, and PDF rendering.
+function smoothStroke(c, points) {
+  if (!points.length) return;
+  c.moveTo(points[0].x, points[0].y);
+  if (points.length === 2) {
+    c.lineTo(points[1].x, points[1].y);
+    return;
+  }
+  for (let i = 1; i < points.length - 1; i++) {
+    const p = points[i],
+      next = points[i + 1];
+    c.quadraticCurveTo(p.x, p.y, (p.x + next.x) / 2, (p.y + next.y) / 2);
+  }
+  if (points.length > 2) {
+    const last = points[points.length - 1];
+    c.lineTo(last.x, last.y);
+  }
+}
+function trianglePoints(o) {
+  return [
+    { x: o.x + o.w * (o.apexX ?? 0.5), y: o.y + o.h * (o.apexY ?? 0) },
+    { x: o.x + o.w, y: o.y + o.h },
+    { x: o.x, y: o.y + o.h },
+  ];
+}
+function connectorControl(o) {
+  return { x: o.x + o.w / 2 + (o.bendX || 0), y: o.y + o.h / 2 + (o.bendY || 0) };
+}
+function connectorPoint(o, t) {
+  const b = connectorControl(o),
+    u = 1 - t;
+  return {
+    x: u * u * o.x + 2 * u * t * b.x + t * t * (o.x + o.w),
+    y: u * u * o.y + 2 * u * t * b.y + t * t * (o.y + o.h),
+  };
+}
+function connectorPath(c, o) {
+  if (o.bendX || o.bendY) {
+    const b = connectorControl(o);
+    c.quadraticCurveTo(b.x, b.y, o.x + o.w, o.y + o.h);
+  } else c.lineTo(o.x + o.w, o.y + o.h);
+}
+function textLayout(o, c) {
+  c.font = textFont(o);
+  const lines = [],
+    maxWidth = o.w ? Math.max(1, o.w - (o.box ? 24 : 0)) : Infinity;
+  o.text.split('\n').forEach((paragraph, index) => {
+    const prefix = o.list === 'bullet' ? '\u2022 ' : o.list === 'number' ? index + 1 + '. ' : '';
+    let line = prefix;
+    for (const word of paragraph.split(/(\s+)/u)) {
+      if (line && c.measureText(line + word).width > maxWidth) {
+        lines.push({ text: line, width: c.measureText(line).width });
+        line = '';
+      }
+      for (const char of word) {
+        if (line && c.measureText(line + char).width > maxWidth) {
+          lines.push({ text: line, width: c.measureText(line).width });
+          line = '';
+        }
+        line += char;
+      }
+    }
+    lines.push({ text: line, width: c.measureText(line).width });
+  });
+  return lines;
+}
+function textBoxHeight(o, c) {
+  return Math.max(o.h || 0, textLayout(o, c).length * textLineHeight(o) + (o.box ? 24 : 0));
+}
 function arrowPoints(o) {
   const end = { x: o.x + o.w, y: o.y + o.h };
-  const angle = Math.atan2(o.h, o.w);
+  const bend = connectorControl(o);
+  const angle = Math.atan2(end.y - bend.y, end.x - bend.x);
   const head = Math.min(Math.hypot(o.w, o.h) * 0.3, Math.max(16, o.width * 4));
   return [
     end,
@@ -110,7 +194,7 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
   }
   if (o.type === 'pen' || o.type === 'highlighter') {
     c.beginPath();
-    o.points.forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
+    smoothStroke(c, o.points);
     if (o.points.length === 1) {
       c.arc(o.points[0].x, o.points[0].y, c.lineWidth / 2, 0, Math.PI * 2);
       c.fill();
@@ -131,24 +215,22 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
   if (o.type === 'line') {
     c.beginPath();
     c.moveTo(o.x, o.y);
-    c.lineTo(o.x + o.w, o.y + o.h);
+    connectorPath(c, o);
     c.stroke();
   }
   if (o.type === 'graph') TutorMath.graph(c, o, boardColor || 'white');
   if (o.type === 'geometry') TutorMath.geometry(c, o);
   if (o.type === 'triangle') {
     c.beginPath();
-    c.moveTo(o.x + o.w / 2, o.y);
-    c.lineTo(o.x + o.w, o.y + o.h);
-    c.lineTo(o.x, o.y + o.h);
+    trianglePoints(o).forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
     c.closePath();
     c.stroke();
   }
-  if (o.type === 'parallelogram') {
+  if (o.type === 'parallelogram' || (o.type === 'rect' && o.skew)) {
     c.beginPath();
-    c.moveTo(o.x + o.w * 0.25, o.y);
+    c.moveTo(o.x + o.w * (o.skew ?? 0.25), o.y);
     c.lineTo(o.x + o.w, o.y);
-    c.lineTo(o.x + o.w * 0.75, o.y + o.h);
+    c.lineTo(o.x + o.w * (1 - (o.skew ?? 0.25)), o.y + o.h);
     c.lineTo(o.x, o.y + o.h);
     c.closePath();
     c.stroke();
@@ -157,13 +239,13 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     const [tip, left, right] = arrowPoints(o);
     c.beginPath();
     c.moveTo(o.x, o.y);
-    c.lineTo(tip.x, tip.y);
+    connectorPath(c, o);
     c.moveTo(left.x, left.y);
     c.lineTo(tip.x, tip.y);
     c.lineTo(right.x, right.y);
     c.stroke();
   }
-  if (o.type === 'rect') c.strokeRect(o.x, o.y, o.w, o.h);
+  if (o.type === 'rect' && !o.skew) c.strokeRect(o.x, o.y, o.w, o.h);
   if (o.type === 'circle') {
     c.beginPath();
     c.ellipse(
@@ -181,14 +263,29 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     const size = o.fontSize || 28;
     c.font = textFont(o);
     c.textBaseline = 'top';
-    o.text.split('\n').forEach((line, i) => {
-      const y = o.y + i * textLineHeight(o);
-      c.fillText(line, o.x, y);
-      if (o.underline && line) {
+    const layout = textLayout(o, c),
+      padding = o.box ? 12 : 0;
+    if (o.box && o.border !== false) {
+      c.lineWidth = 1.5;
+      c.strokeRect(o.x, o.y, o.w, textBoxHeight(o, c));
+    }
+    layout.forEach((line, i) => {
+      const y = o.y + padding + i * textLineHeight(o);
+      const available = o.w ? o.w - padding * 2 : line.width;
+      const x =
+        o.x +
+        padding +
+        (o.align === 'center'
+          ? (available - line.width) / 2
+          : o.align === 'right'
+            ? available - line.width
+            : 0);
+      c.fillText(line.text, x, y);
+      if (o.underline && line.text) {
         c.lineWidth = Math.max(1, size / 18);
         c.beginPath();
-        c.moveTo(o.x, y + size * 1.08);
-        c.lineTo(o.x + c.measureText(line).width, y + size * 1.08);
+        c.moveTo(x, y + size * 1.08);
+        c.lineTo(x + line.width, y + size * 1.08);
         c.stroke();
       }
     });
@@ -244,7 +341,8 @@ function render(showSelection = true) {
   for (const o of page().objects) drawObject(ctx, o);
   if (preview) drawObject(ctx, preview);
   if (showSelection && selected && tool === 'move') drawSelection();
-  $('empty-hint').style.display = page().objects.length || preview ? 'none' : 'flex';
+  $('empty-hint').style.display =
+    page().objects.length || preview || !$('text-editor').hidden ? 'none' : 'flex';
   $('undo').disabled = !page().undo.length;
   $('redo').disabled = !page().redo.length;
 }
@@ -319,6 +417,8 @@ function update() {
   syncPageNavigation();
   selected = null;
   syncSelection();
+  activePointer = null;
+  pointerSnapshot = null;
   gesture = null;
   preview = null;
   $('page-title').textContent = 'Page ' + (index + 1);
@@ -365,6 +465,7 @@ function refreshCursor() {
   canvas.style.cursor = toolCursor(tool);
 }
 function setTool(t) {
+  if (activePointer) end();
   commitText();
   tool = t;
   if (t !== 'move') selected = null;
@@ -374,8 +475,9 @@ function setTool(t) {
     b.classList.toggle('active', b.dataset.tool === t);
     b.setAttribute('aria-pressed', b.dataset.tool === t);
   });
+  $('connector-toggle').classList.toggle('active', ['line', 'arrow'].includes(t));
   refreshCursor();
-  $('eraser-options').hidden = t !== 'eraser';
+  if (t !== 'eraser') closeEraserMenu();
   $('eraser-size').disabled = eraserMode === 'object';
   $('status').textContent =
     t === 'eraser'
@@ -385,7 +487,7 @@ function setTool(t) {
       : t === 'move'
         ? 'Move · Drag a mark, text, or image'
         : t === 'text'
-          ? 'Text · Click to type; Ctrl + Enter to place'
+          ? 'Text box · Drag to size, then type; Ctrl + Enter to place'
           : t === 'pen'
             ? 'Chalk ready · Hold Shift for a straight line'
             : t.charAt(0).toUpperCase() + t.slice(1) + ' ready · Draw anywhere on the page';
@@ -403,7 +505,7 @@ colors.forEach((v) => {
   const b = document.createElement('button');
   b.style.background = v;
   b.dataset.color = v;
-  const names = ['Red', 'Yellow', 'Blue', 'Black', 'White', 'Green', 'Purple', 'Orange'];
+  const names = ['Yellow', 'Red', 'White', 'Black', 'Blue'];
   b.title = names[colors.indexOf(v)];
   b.setAttribute('aria-label', b.title + ' chalk');
   b.onclick = () => setColor(v);
@@ -449,22 +551,32 @@ function hit(o, p) {
         i && segmentDist(p, o.points[i - 1], a) < pad + (o.type === 'highlighter' ? o.width * 2 : 0)
     );
   }
-  if (o.type === 'arrow') {
-    const [tip, left, right] = arrowPoints(o);
-    return (
-      segmentDist(p, o, tip) < pad ||
-      segmentDist(p, tip, left) < pad ||
-      segmentDist(p, tip, right) < pad
-    );
+  if (o.type === 'triangle') {
+    const vertices = trianglePoints(o);
+    if (vertices.some((a, i) => segmentDist(p, a, vertices[(i + 1) % 3]) < pad)) return true;
+    const sides = vertices.map((a, i) => {
+      const b = vertices[(i + 1) % 3];
+      return (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    });
+    return sides.every((v) => v >= 0) || sides.every((v) => v <= 0);
   }
-  if (o.type === 'line')
-    return segmentDist(p, { x: o.x, y: o.y }, { x: o.x + o.w, y: o.y + o.h }) < pad;
+  if (o.type === 'arrow' || o.type === 'line') {
+    let previous = { x: o.x, y: o.y };
+    for (let i = 1; i <= 64; i++) {
+      const next = connectorPoint(o, i / 64);
+      if (segmentDist(p, previous, next) < pad) return true;
+      previous = next;
+    }
+    if (o.type === 'line') return false;
+    const [tip, left, right] = arrowPoints(o);
+    return segmentDist(p, tip, left) < pad || segmentDist(p, tip, right) < pad;
+  }
   let w = o.w,
     h = o.h;
   if (o.type === 'text') {
     ctx.font = textFont(o);
-    w = Math.max(...o.text.split('\n').map((s) => ctx.measureText(s).width));
-    h = o.text.split('\n').length * textLineHeight(o);
+    w = o.w || Math.max(1, ...textLayout(o, ctx).map((line) => line.width));
+    h = textBoxHeight(o, ctx);
   }
   return (
     p.x >= Math.min(o.x, o.x + w) - pad &&
@@ -474,11 +586,13 @@ function hit(o, p) {
   );
 }
 function objectBounds(o) {
-  if (o.type === 'arrow') {
+  if (['arrow', 'line', 'triangle'].includes(o.type)) {
     const center = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
-    const points = [{ x: o.x, y: o.y }, ...arrowPoints(o)].map((p) =>
-      rotatePoint(p, center, o.rotation || 0)
-    );
+    const points = (
+      o.type === 'triangle'
+        ? trianglePoints(o)
+        : [{ x: o.x, y: o.y }, connectorControl(o), ...arrowPoints(o)]
+    ).map((p) => rotatePoint(p, center, o.rotation || 0));
     return {
       x: Math.min(...points.map((p) => p.x)) - o.width,
       y: Math.min(...points.map((p) => p.y)) - o.width,
@@ -521,8 +635,8 @@ function objectBounds(o) {
     h = o.h;
   if (o.type === 'text') {
     ctx.font = textFont(o);
-    w = Math.max(...o.text.split('\n').map((s) => ctx.measureText(s).width));
-    h = o.text.split('\n').length * textLineHeight(o);
+    w = o.w || Math.max(1, ...textLayout(o, ctx).map((line) => line.width));
+    h = textBoxHeight(o, ctx);
   }
   return {
     x: Math.min(o.x, o.x + w) - o.width,
@@ -567,58 +681,118 @@ function erase(p) {
     if (p.x !== mask.points.at(-1).x || p.y !== mask.points.at(-1).y) mask.points.push({ ...p });
   }
 }
-$('eraser-mode').onchange = (e) => {
-  eraserMode = e.target.value;
-  setTool('eraser');
-};
+document.querySelectorAll('[data-eraser-mode]').forEach((button) => {
+  button.onclick = () => {
+    eraserMode = button.dataset.eraserMode;
+    document
+      .querySelectorAll('[data-eraser-mode]')
+      .forEach((option) =>
+        option.setAttribute('aria-pressed', String(option.dataset.eraserMode === eraserMode))
+      );
+    setTool('eraser');
+    closeEraserMenu(true);
+  };
+});
 $('eraser-size').oninput = (e) => {
   eraserSize = +e.target.value;
   $('eraser-size-value').textContent = eraserSize + ' px';
 };
+// A stroke belongs to one pointer. Detecting a stylus disables touch until
+// the user explicitly chooses Finger drawing; Pen only also protects the first stroke.
+function acceptsPointer(e) {
+  if (e.pointerType === 'pen') return true;
+  if (inputMode === 'pen') return false;
+  if (e.pointerType === 'touch')
+    return e.isPrimary !== false && (inputMode === 'touch' || !penSeen);
+  return true;
+}
+function cancelPointer() {
+  if (pointerSnapshot) {
+    page().objects = pointerSnapshot.objects;
+    page().undo = pointerSnapshot.undo;
+    page().redo = pointerSnapshot.redo;
+  }
+  const id = activePointer?.id;
+  activePointer = null;
+  pointerSnapshot = null;
+  gesture = null;
+  preview = null;
+  selected = null;
+  if (id !== undefined && canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
+  syncSelection();
+  refreshCursor();
+  render();
+}
+function observePen(e) {
+  if (e.pointerType !== 'pen' || inputMode === 'touch') return;
+  penSeen = true;
+  if (activePointer?.type === 'touch') cancelPointer();
+  $('input-hint').textContent = 'Pen detected: palm touch is ignored';
+}
+canvas.addEventListener('pointerover', observePen);
+$('input-mode').onchange = (e) => {
+  if (activePointer) cancelPointer();
+  inputMode = e.target.value;
+  penSeen = false;
+  $('input-hint').textContent =
+    inputMode === 'pen'
+      ? 'Stylus only; palm and finger touches are ignored'
+      : inputMode === 'touch'
+        ? 'Draw with one finger at a time'
+        : 'Touch drawing turns off when a stylus is detected';
+  try {
+    localStorage.setItem('vinee-input-mode', inputMode);
+  } catch {}
+};
+try {
+  const saved = localStorage.getItem('vinee-input-mode');
+  if (['auto', 'pen', 'touch'].includes(saved)) {
+    inputMode = saved;
+    $('input-mode').value = saved;
+    $('input-mode').onchange({ target: { value: saved } });
+  }
+} catch {}
 canvas.onpointerdown = (e) => {
-  if (e.button !== 0) return;
+  observePen(e);
+  if (e.button !== 0 || !acceptsPointer(e) || activePointer) return;
+  e.preventDefault();
   commitText();
   const p = point(e);
+  activePointer = { id: e.pointerId, type: e.pointerType };
+  pointerSnapshot = {
+    objects: clone(page().objects),
+    undo: page().undo.slice(),
+    redo: page().redo.slice(),
+  };
+  canvas.setPointerCapture(e.pointerId);
   if (tool === 'text') {
-    e.preventDefault();
-    const r = canvas.getBoundingClientRect(),
-      ed = $('text-editor'),
-      place = $('text-place'),
-      left = Math.min((p.x / W) * r.width, Math.max(0, r.width - 270)),
-      top = Math.min((p.y / H) * r.height, Math.max(0, r.height - 150));
-    ed.hidden = false;
-    ed.style.left = left + 'px';
-    ed.style.top = top + 'px';
-    ed.style.width = Math.min(260, r.width - 16) + 'px';
-    ed.dataset.x = (left / r.width) * W;
-    ed.dataset.y = (top / r.height) * H;
-    ed.dataset.color = color;
-    ed.value = '';
-    ed.style.color = color;
-    ed.style.background = boardColors[page().boardColor || 'white'];
-    ed.classList.toggle('dark-board', page().boardColor !== 'white');
-    place.hidden = false;
-    place.style.left = left + 'px';
-    place.style.top = top + 95 + 'px';
-    $('empty-hint').style.display = 'none';
-    syncTextControls();
-    ed.focus({ preventScroll: true });
+    gesture = { kind: 'text-box', start: p, moved: false };
+    preview = {
+      type: 'text',
+      box: true,
+      text: '',
+      x: p.x,
+      y: p.y,
+      w: 80,
+      h: 40,
+      color,
+      width,
+      ...textStyle,
+    };
+    render();
     return;
   }
-  canvas.setPointerCapture(e.pointerId);
   if (tool === 'move') {
-    if (
+    const handle =
       selected &&
-      selected.type !== 'text' &&
-      Math.hypot(p.x - resizeCorner(selected).x, p.y - resizeCorner(selected).y) < 22
-    ) {
+      selectionHandles(selected).find((h) => Math.hypot(p.x - h.x, p.y - h.y) < handleSize() * 1.6);
+    if (handle) {
       checkpoint();
-      gesture = { kind: 'resize', start: p, original: clone(selected), target: selected };
-      canvas.style.cursor = 'nwse-resize';
+      gesture = { kind: 'control', handle, start: p, original: clone(selected), target: selected };
       return;
     }
     const target = [...page().objects].reverse().find((o) => hit(o, p));
-    selected = target && (canTransform(target) || target.type === 'text') ? target : null;
+    selected = target || null;
     syncSelection();
     render();
     if (!target) return;
@@ -645,10 +819,27 @@ canvas.onpointerdown = (e) => {
   render();
 };
 canvas.onpointermove = (e) => {
-  if (!gesture) return;
+  observePen(e);
+  if (!gesture || e.pointerId !== activePointer?.id) return;
   const p = point(e);
+  if (gesture.kind === 'text-box') {
+    const start = gesture.start;
+    gesture.moved = Math.hypot(p.x - start.x, p.y - start.y) > 10;
+    preview.x = Math.max(0, Math.min(start.x, p.x));
+    preview.y = Math.max(0, Math.min(start.y, p.y));
+    preview.w = Math.max(80, Math.min(W - preview.x, Math.abs(p.x - start.x)));
+    preview.h = Math.max(40, Math.min(H - preview.y, Math.abs(p.y - start.y)));
+    render();
+    return;
+  }
   if (gesture.kind === 'eraser') {
     erase(p);
+    render();
+    return;
+  }
+  if (gesture.kind === 'control') {
+    dragControl(gesture, p, e.shiftKey);
+    syncSelection();
     render();
     return;
   }
@@ -698,16 +889,47 @@ canvas.onpointermove = (e) => {
     return;
   }
   if (preview.points) {
-    for (const ev of e.getCoalescedEvents?.() || [e]) preview.points.push(point(ev));
+    const samples = e.getCoalescedEvents?.();
+    for (const ev of samples?.length ? samples : [e]) {
+      const next = point(ev),
+        last = preview.points.at(-1);
+      if (Math.hypot(next.x - last.x, next.y - last.y) >= 0.5) preview.points.push(next);
+    }
   } else {
     preview.w = p.x - preview.x;
     preview.h = p.y - preview.y;
   }
   render();
 };
-function end() {
+function end(e) {
+  if (e && e.pointerId !== activePointer?.id) return;
+  if (e && gesture && Number.isFinite(e.clientX)) canvas.onpointermove(e);
+  const id = activePointer?.id;
+  activePointer = null;
+  pointerSnapshot = null;
+  if (id !== undefined && canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
   if (!gesture) return;
-  if (preview) page().objects.push(preview);
+  if (gesture.kind === 'text-box') {
+    const box = { ...preview };
+    if (!gesture.moved) {
+      box.w = 520;
+      box.h = 180;
+    }
+    gesture = null;
+    preview = null;
+    render();
+    openTextBox(box);
+    return;
+  }
+  if (preview) {
+    const created = preview;
+    page().objects.push(created);
+    if (isEditableShape(created)) {
+      setTool('move');
+      selected = created;
+      syncSelection();
+    }
+  }
   gesture = null;
   preview = null;
   refreshCursor();
@@ -715,30 +937,176 @@ function end() {
   thumbnails();
 }
 canvas.onpointerup = end;
-canvas.onpointercancel = end;
+canvas.onpointercancel = (e) => {
+  if (e.pointerId === activePointer?.id) cancelPointer();
+};
+canvas.onlostpointercapture = (e) => {
+  if (e.pointerId === activePointer?.id) cancelPointer();
+};
 function commitText() {
   const ed = $('text-editor');
   if (ed.hidden) return;
   const size = Number($('text-size').value);
   if (Number.isFinite(size) && size >= 10 && size <= 120) textStyle.fontSize = size;
   const value = ed.value.trim();
+  const editorBounds = ed.getBoundingClientRect();
+  const boardBounds = canvas.getBoundingClientRect();
   ed.hidden = true;
   $('text-place').hidden = true;
   if (value) {
     checkpoint();
-    page().objects.push({
+    const box = {
       type: 'text',
+      box: true,
       text: value,
       x: +ed.dataset.x,
       y: +ed.dataset.y,
       color: ed.dataset.color || color,
       width,
       ...textStyle,
-    });
+      w: Math.max(80, Math.min(W, (editorBounds.width * W) / boardBounds.width)),
+      h: Math.max(40, Math.min(H, (editorBounds.height * H) / boardBounds.height)),
+    };
+    if (editingText) Object.assign(editingText, box);
+    else page().objects.push(box);
+    selected = editingText || box;
+    editingText = null;
+    setTool('move');
+    syncSelection();
     render();
     thumbnails();
-  } else render();
+  } else {
+    editingText = null;
+    render();
+  }
 }
+function openTextBox(p, existing = null) {
+  const r = canvas.getBoundingClientRect(),
+    ed = $('text-editor'),
+    scale = r.width / W;
+  editingText = existing;
+  if (existing)
+    textStyle = {
+      fontSize: existing.fontSize || 28,
+      bold: !!existing.bold,
+      underline: !!existing.underline,
+      list: existing.list || 'none',
+      align: existing.align || 'left',
+      spacing: existing.spacing || 1.35,
+      border: existing.border !== false,
+    };
+  const x = Math.max(0, Math.min(p.x, W - 100)),
+    y = Math.max(0, Math.min(p.y, H - 50));
+  ed.hidden = false;
+  ed.style.left = x * scale + 'px';
+  ed.style.top = y * scale + 'px';
+  ed.style.width = Math.min(existing?.w || p.w || 520, W - x) * scale + 'px';
+  ed.style.height = Math.min(existing?.h || p.h || 180, H - y) * scale + 'px';
+  ed.dataset.x = x;
+  ed.dataset.y = y;
+  ed.dataset.color = existing?.color || color;
+  ed.value = existing?.text || '';
+  ed.style.color = ed.dataset.color;
+  ed.style.background = boardColors[page().boardColor || 'white'];
+  ed.classList.toggle('dark-board', page().boardColor !== 'white');
+  const place = $('text-place');
+  place.hidden = false;
+  place.style.left = x * scale + 'px';
+  place.style.top =
+    Math.min(r.height - 32, y * scale + Math.min(existing?.h || p.h || 180, H - y) * scale + 6) +
+    'px';
+  syncTextControls();
+  render();
+  ed.focus({ preventScroll: true });
+}
+canvas.ondblclick = (e) => {
+  if (!['move', 'text'].includes(tool) || (e.pointerType && !acceptsPointer(e))) return;
+  const p = point(e),
+    target = [...page().objects].reverse().find((o) => o.type === 'text' && hit(o, p));
+  if (target) {
+    commitText();
+    selected = target;
+    openTextBox(target, target);
+  }
+};
+$('text-edit-selected').onclick = () => {
+  if (selected?.type === 'text') openTextBox(selected, selected);
+};
+$('text-list').onchange = (e) => formatText({ list: e.target.value });
+$('text-align').onchange = (e) => formatText({ align: e.target.value });
+$('text-border').onchange = (e) => formatText({ border: e.target.checked });
+$('text-spacing').onchange = (e) => formatText({ spacing: +e.target.value });
+function positionToolMenu(menu, toggle) {
+  const anchor = toggle.getBoundingClientRect();
+  menu.hidden = false;
+  menu.style.left =
+    Math.max(8, Math.min(anchor.left, window.innerWidth - menu.offsetWidth - 8)) + 'px';
+  menu.style.top = anchor.bottom + 6 + 'px';
+  toggle.setAttribute('aria-expanded', 'true');
+  menu.querySelector('button').focus();
+}
+function closeEraserMenu(returnFocus = false) {
+  $('eraser-menu').hidden = true;
+  $('eraser-toggle').setAttribute('aria-expanded', 'false');
+  if (returnFocus) $('eraser-toggle').focus();
+}
+$('eraser-toggle').onclick = () => {
+  const wasOpen = !$('eraser-menu').hidden;
+  setTool('eraser');
+  closeConnectorMenu();
+  if (wasOpen) closeEraserMenu();
+  else positionToolMenu($('eraser-menu'), $('eraser-toggle'));
+};
+function closeConnectorMenu(returnFocus = false) {
+  $('connector-menu').hidden = true;
+  $('connector-toggle').setAttribute('aria-expanded', 'false');
+  if (returnFocus) $('connector-toggle').focus();
+}
+$('connector-toggle').onclick = () => {
+  const menu = $('connector-menu');
+  if (!menu.hidden) {
+    closeConnectorMenu();
+    return;
+  }
+  closeEraserMenu();
+  positionToolMenu(menu, $('connector-toggle'));
+};
+document.addEventListener('pointerdown', (e) => {
+  if (!e.target.closest('#connector-picker')) closeConnectorMenu();
+  if (!e.target.closest('#eraser-picker')) closeEraserMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$('eraser-menu').hidden) {
+    e.preventDefault();
+    closeEraserMenu(true);
+  }
+  if (e.key === 'Escape' && !$('connector-menu').hidden) {
+    e.preventDefault();
+    closeConnectorMenu(true);
+  }
+});
+window.addEventListener('resize', () => {
+  closeConnectorMenu();
+  closeEraserMenu();
+});
+document.addEventListener(
+  'scroll',
+  () => {
+    closeConnectorMenu();
+    closeEraserMenu();
+  },
+  true
+);
+document.querySelectorAll('#connector-menu [data-tool]').forEach((button) => {
+  button.onclick = () => {
+    setTool(button.dataset.tool);
+    closeConnectorMenu(true);
+    $('connector-toggle').textContent =
+      button.dataset.tool === 'arrow' ? '\u2197 \u25be' : '\u2571 \u25be';
+    $('connector-toggle').title =
+      (button.dataset.tool === 'arrow' ? 'Arrow' : 'Line') + ' (choose line or arrow)';
+  };
+});
 $('text-place').onpointerdown = (e) => e.preventDefault();
 $('text-place').onclick = () => commitText();
 $('text-editor').onkeydown = (e) => {
@@ -748,6 +1116,7 @@ $('text-editor').onkeydown = (e) => {
     commitText();
   }
   if (e.key === 'Escape') {
+    editingText = null;
     $('text-editor').hidden = true;
     $('text-place').hidden = true;
     render();
@@ -813,6 +1182,7 @@ $('clear-confirm').onclick = () => {
   toast('Page cleared. Use Undo to restore it.');
 };
 function undo() {
+  if (activePointer) end();
   commitText();
   if (!page().undo.length) return;
   page().redo.push(clone(page().objects));
@@ -823,6 +1193,7 @@ function undo() {
   thumbnails();
 }
 function redo() {
+  if (activePointer) end();
   if (!page().redo.length) return;
   page().undo.push(clone(page().objects));
   page().objects = page().redo.pop();
@@ -1006,6 +1377,15 @@ function validObject(o) {
       ))
   )
     return false;
+  if (
+    ['bendX', 'bendY', 'skew', 'apexX', 'apexY'].some(
+      (key) => o[key] !== undefined && !Number.isFinite(o[key])
+    )
+  )
+    return false;
+  if (o.apexX !== undefined && (o.apexX < -2 || o.apexX > 3)) return false;
+  if (o.apexY !== undefined && (o.apexY < -2 || o.apexY > 0.95)) return false;
+  if (o.skew !== undefined && (o.skew < 0 || o.skew > 0.9)) return false;
   if (canTransform(o) && o.rotation !== undefined && !Number.isFinite(o.rotation)) return false;
   if (o.type === 'graph' || o.type === 'geometry') return TutorMath.valid(o);
   if (o.points)
@@ -1020,6 +1400,15 @@ function validObject(o) {
   if (!Number.isFinite(o.x) || !Number.isFinite(o.y)) return false;
   if (o.type === 'text')
     return (
+      (o.box === undefined || typeof o.box === 'boolean') &&
+      (o.border === undefined || typeof o.border === 'boolean') &&
+      (o.box !== true || (Number.isFinite(o.w) && Number.isFinite(o.h))) &&
+      (o.w === undefined || (Number.isFinite(o.w) && o.w >= 40 && o.w <= W)) &&
+      (o.h === undefined || (Number.isFinite(o.h) && o.h >= 20 && o.h <= H)) &&
+      (o.list === undefined || ['none', 'bullet', 'number'].includes(o.list)) &&
+      (o.align === undefined || ['left', 'center', 'right'].includes(o.align)) &&
+      (o.spacing === undefined ||
+        (Number.isFinite(o.spacing) && o.spacing >= 1 && o.spacing <= 2)) &&
       typeof o.text === 'string' &&
       o.text.length <= 10000 &&
       (o.fontSize === undefined ||
@@ -1097,6 +1486,19 @@ $('export').onclick = () => {
   toast('This page is downloading as an image.');
 };
 let panelsBeforePresent = null;
+function positionPanelToggles() {
+  const pagesHidden = document.body.classList.contains('pages-hidden');
+  const toolsHidden = document.body.classList.contains('tools-hidden');
+  $('toggle-pages').style.left = pagesHidden
+    ? ''
+    : $('pages-panel').getBoundingClientRect().right + 'px';
+  $('toggle-tools').style.right = toolsHidden
+    ? ''
+    : window.innerWidth - $('tools-panel').getBoundingClientRect().left + 'px';
+  const stage = document.querySelector('.board-stage').getBoundingClientRect();
+  $('toggle-paper').style.left = stage.left + stage.width / 2 + 'px';
+  $('toggle-paper').style.top = stage.top + 'px';
+}
 function syncPanels() {
   if (boardLayoutReady) layoutBoard();
   for (const [id, kind] of [
@@ -1104,9 +1506,13 @@ function syncPanels() {
     ['toggle-tools', 'tools'],
   ]) {
     const hidden = document.body.classList.contains(kind + '-hidden');
-    $(id).textContent = (hidden ? 'Show ' : 'Hide ') + kind;
+    const label = (hidden ? 'Show ' : 'Hide ') + kind;
+    $(id).textContent = (kind === 'pages' ? hidden : !hidden) ? '\u203a' : '\u2039';
+    $(id).title = label;
+    $(id).setAttribute('aria-label', label);
     $(id).setAttribute('aria-expanded', String(!hidden));
   }
+  positionPanelToggles();
 }
 for (const kind of ['pages', 'tools'])
   $('toggle-' + kind).onclick = () => {
@@ -1119,7 +1525,10 @@ function togglePaperControls() {
   panel.hidden = !panel.hidden;
   // Collapse the entire heading row, including drawing tools, to free board height.
   $('board-controls').hidden = panel.hidden;
-  $('toggle-paper').textContent = panel.hidden ? 'Show paper controls' : 'Hide paper controls';
+  const label = panel.hidden ? 'Show paper controls' : 'Hide paper controls';
+  $('toggle-paper').textContent = panel.hidden ? '\u25be' : '\u25b4';
+  $('toggle-paper').title = label;
+  $('toggle-paper').setAttribute('aria-label', label);
   $('toggle-paper').setAttribute('aria-expanded', String(!panel.hidden));
   if (boardLayoutReady) layoutBoard();
 }
@@ -1165,8 +1574,28 @@ $('focus').onclick = () => {
 };
 syncPanels();
 
+function deleteSelected() {
+  if (activePointer) end();
+  commitText();
+  const at = page().objects.indexOf(selected);
+  if (tool !== 'move' || at < 0) return;
+  checkpoint();
+  page().objects.splice(at, 1);
+  selected = null;
+  syncSelection();
+  render();
+  thumbnails();
+}
+$('delete-object').onpointerdown = (e) => e.preventDefault();
+$('delete-object').onclick = deleteSelected;
+
 document.addEventListener('keydown', (e) => {
-  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+  if (
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) ||
+    document.activeElement.isContentEditable ||
+    document.querySelector('dialog[open]')
+  )
+    return;
   const mod = e.ctrlKey || e.metaKey;
   if (mod && e.key.toLowerCase() === 'z') {
     e.preventDefault();
@@ -1175,6 +1604,11 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     $('save').click();
   } else if (!mod) {
+    if (e.key === 'Delete' && selected && tool === 'move') {
+      e.preventDefault();
+      deleteSelected();
+      return;
+    }
     const keys = { p: 'pen', h: 'highlighter', e: 'eraser', t: 'text', v: 'move' };
     if (keys[e.key.toLowerCase()]) setTool(keys[e.key.toLowerCase()]);
     if (e.key === 'Escape' && document.body.classList.contains('present')) $('focus').click();
@@ -1376,8 +1810,9 @@ function parseNames(value) {
 }
 function syncSelection() {
   syncTextControls();
+  $('delete-object').disabled = !selected || !page().objects.includes(selected) || tool !== 'move';
   const visible =
-    selected && selected.type !== 'text' && page().objects.includes(selected) && tool === 'move';
+    selected && canTransform(selected) && page().objects.includes(selected) && tool === 'move';
   $('object-options').hidden = !visible;
   $('geometry-edit').hidden = !visible || selected.type !== 'geometry';
   $('image-edit').hidden = !visible || selected.type !== 'image';
@@ -1402,23 +1837,155 @@ function syncSelection() {
     $('image-rotation').value = Math.round((selected.rotation || 0) * 100) / 100;
   }
 }
+function handleSize() {
+  return (4 * W) / canvas.getBoundingClientRect().width;
+}
+function selectionHandles(o) {
+  if (!canTransform(o) && o.type !== 'text') return [];
+  const center = { x: o.x + (o.w || 0) / 2, y: o.y + (o.h || 0) / 2 };
+  const world = (p) => rotatePoint(p, center, o.rotation || 0);
+  const gap = handleSize() * 5;
+  if (o.type === 'line' || o.type === 'arrow')
+    return [
+      { ...world(o), kind: 'start' },
+      { ...world({ x: o.x + o.w, y: o.y + o.h }), kind: 'end' },
+      { ...world(connectorPoint(o, 0.5)), kind: 'bend' },
+    ];
+  const b =
+    o.type === 'text' ? objectBounds(o) : { x: o.x, y: o.y, right: o.x + o.w, bottom: o.y + o.h };
+  const handles = [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+  ].map(([u, v]) => ({
+    ...world({ x: b.x + (b.right - b.x) * u, y: b.y + (b.bottom - b.y) * v }),
+    kind: 'corner',
+    u,
+    v,
+  }));
+  if (o.type !== 'text')
+    handles.push({ ...world({ x: center.x, y: Math.min(o.y, o.y + o.h) - gap }), kind: 'rotate' });
+  if (o.type === 'rect' || o.type === 'parallelogram')
+    handles.unshift({
+      ...world({
+        x: o.x + o.w * (o.skew ?? (o.type === 'rect' ? 0 : 0.25)),
+        y: o.y + Math.sign(o.h || 1) * handleSize() * 2.5,
+      }),
+      kind: 'skew',
+    });
+  if (o.type === 'triangle') handles.unshift({ ...world(trianglePoints(o)[0]), kind: 'apex' });
+  return handles;
+}
 function drawSelection() {
-  const b = objectBounds(selected);
+  const radius = handleSize();
   ctx.save();
   ctx.strokeStyle = '#16834a';
-  ctx.lineWidth = 2;
-  ctx.setLineDash([8, 5]);
-  ctx.strokeRect(b.x, b.y, b.right - b.x, b.bottom - b.y);
+  ctx.lineWidth = radius / 3;
   ctx.setLineDash([]);
-  if (selected.type === 'text') {
-    ctx.restore();
-    return;
+  for (const h of selectionHandles(selected)) {
+    ctx.fillStyle = ['skew', 'bend', 'apex'].includes(h.kind) ? '#fbbf24' : '#ffffff';
+    ctx.beginPath();
+    if (['rotate', 'bend', 'apex'].includes(h.kind)) ctx.arc(h.x, h.y, radius, 0, Math.PI * 2);
+    else ctx.rect(h.x - radius, h.y - radius, radius * 2, radius * 2);
+    ctx.fill();
+    ctx.stroke();
   }
-  const corner = resizeCorner(selected);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(corner.x - 10, corner.y - 10, 20, 20);
-  ctx.strokeRect(corner.x - 10, corner.y - 10, 20, 20);
   ctx.restore();
+}
+function dragControl(g, p, snap) {
+  const o = g.target,
+    old = g.original,
+    h = g.handle;
+  const center = { x: old.x + (old.w || 0) / 2, y: old.y + (old.h || 0) / 2 };
+  const local = rotatePoint(p, center, -(old.rotation || 0));
+  if (h.kind === 'rotate') {
+    const initial = Math.atan2(g.start.y - center.y, g.start.x - center.x);
+    let degrees =
+      (old.rotation || 0) +
+      ((Math.atan2(p.y - center.y, p.x - center.x) - initial) * 180) / Math.PI;
+    if (snap) degrees = Math.round(degrees / 15) * 15;
+    o.rotation = normalizeRotation(degrees);
+    if (old.erasures)
+      o.erasures = old.erasures.map((m) => ({
+        ...m,
+        points: m.points.map((q) => rotatePoint(q, center, degrees - (old.rotation || 0))),
+      }));
+  } else if (h.kind === 'bend') {
+    o.bendX = 2 * (local.x - center.x);
+    o.bendY = 2 * (local.y - center.y);
+  } else if (h.kind === 'apex') {
+    o.apexX = Math.max(-2, Math.min(3, (local.x - old.x) / (old.w || 1)));
+    o.apexY = Math.max(-2, Math.min(0.95, (local.y - old.y) / (old.h || 1)));
+  } else if (h.kind === 'skew') {
+    o.skew = Math.max(0, Math.min(0.9, (local.x - old.x) / (old.w || 1)));
+  } else if (h.kind === 'start' || h.kind === 'end') {
+    const a = rotatePoint(old, center, old.rotation || 0);
+    const b = rotatePoint({ x: old.x + old.w, y: old.y + old.h }, center, old.rotation || 0);
+    const bend = rotatePoint(connectorControl(old), center, old.rotation || 0);
+    const start = h.kind === 'start' ? p : a,
+      end = h.kind === 'end' ? p : b;
+    Object.assign(o, {
+      x: start.x,
+      y: start.y,
+      w: end.x - start.x,
+      h: end.y - start.y,
+      rotation: 0,
+    });
+    o.bendX = bend.x - o.x - o.w / 2;
+    o.bendY = bend.y - o.y - o.h / 2;
+    if (!old.bendX && !old.bendY) {
+      o.bendX = 0;
+      o.bendY = 0;
+    }
+  } else if (o.type === 'text') {
+    const bounds = objectBounds(old),
+      anchor = { x: h.u ? old.x : bounds.right, y: h.v ? old.y : bounds.bottom };
+    o.w = Math.max(80, Math.min(W, Math.abs(p.x - anchor.x)));
+    o.h = Math.max(40, Math.min(H, Math.abs(p.y - anchor.y)));
+    o.x = h.u ? anchor.x : anchor.x - o.w;
+    o.y = h.v ? anchor.y : anchor.y - o.h;
+  } else if (o.type === 'geometry' || o.type === 'image') {
+    // Existing diagrams preserve their aspect ratio from the opposite corner.
+    resizeFromCorner(o, old, p, h, true);
+  } else resizeFromCorner(o, old, p, h, snap);
+}
+function resizeFromCorner(o, old, p, h, proportional) {
+  const center = { x: old.x + old.w / 2, y: old.y + old.h / 2 };
+  const anchor = rotatePoint(
+    { x: old.x + (1 - h.u) * old.w, y: old.y + (1 - h.v) * old.h },
+    center,
+    old.rotation || 0
+  );
+  const delta = rotatePoint(
+    { x: p.x - anchor.x, y: p.y - anchor.y },
+    { x: 0, y: 0 },
+    -(old.rotation || 0)
+  );
+  let w = Math.max(10, Math.min(W, Math.abs(delta.x))),
+    height = Math.max(10, Math.min(H, Math.abs(delta.y)));
+  if (proportional) {
+    const scale = Math.min(w / (Math.abs(old.w) || 1), height / (Math.abs(old.h) || 1));
+    w = Math.abs(old.w) * scale;
+    height = Math.abs(old.h) * scale;
+  }
+  resizeShape(o, old, w, height);
+  const nextAnchor = rotatePoint(
+    { x: o.x + (1 - h.u) * o.w, y: o.y + (1 - h.v) * o.h },
+    { x: o.x + o.w / 2, y: o.y + o.h / 2 },
+    o.rotation || 0
+  );
+  const dx = anchor.x - nextAnchor.x,
+    dy = anchor.y - nextAnchor.y;
+  o.x += dx;
+  o.y += dy;
+  if (o.erasures)
+    o.erasures.forEach((m) =>
+      m.points.forEach((q) => {
+        q.x += dx;
+        q.y += dy;
+      })
+    );
 }
 function changeRotation(degrees) {
   if (!selected || !canTransform(selected) || !Number.isFinite(degrees)) return;
@@ -1484,6 +2051,8 @@ function resizeImage(o, old, w) {
 function resizeShape(o, old, w, h) {
   const sx = Math.abs(old.w) > 0 ? w / Math.abs(old.w) : 1;
   const sy = Math.abs(old.h) > 0 ? h / Math.abs(old.h) : 1;
+  if (old.bendX !== undefined) o.bendX = old.bendX * sx;
+  if (old.bendY !== undefined) o.bendY = old.bendY * sy;
   o.w = (old.w < 0 ? -1 : 1) * w;
   o.h = (old.h < 0 ? -1 : 1) * h;
   o.x = old.x;
@@ -1520,7 +2089,7 @@ $('apply-shape-size').onclick = () => {
     w > W ||
     h > H ||
     Math.max(w, h) < 10 ||
-    (selected.type !== 'arrow' && Math.min(w, h) < 10)
+    (!['arrow', 'line'].includes(selected.type) && Math.min(w, h) < 10)
   ) {
     toast('Choose shape dimensions from 10 to the board size. Arrows may have one zero dimension.');
     return;
@@ -1736,18 +2305,26 @@ function textFont(o) {
   return (o.bold ? 'bold ' : '') + (o.fontSize || 28) + 'px "Segoe UI",Arial,sans-serif';
 }
 function textLineHeight(o) {
-  return (o.fontSize || 28) * 1.35;
+  return (o.fontSize || 28) * (o.spacing || 1.35);
 }
 function syncTextControls() {
   const target = selected?.type === 'text' && page().objects.includes(selected) ? selected : null;
-  const style = target || textStyle;
-  $('text-options').hidden = tool !== 'text' && !target;
+  const style = editingText ? textStyle : target || textStyle;
+  $('text-edit-selected').hidden = !target || !!editingText;
+  $('text-options').hidden = tool !== 'text' && !target && $('text-editor').hidden;
+  $('text-list').value = style.list || 'none';
+  $('text-align').value = style.align || 'left';
+  $('text-spacing').value = style.spacing || 1.35;
+  $('text-border').checked = style.border !== false;
   $('text-size').value = style.fontSize || 28;
   $('text-bold').setAttribute('aria-pressed', String(!!style.bold));
   $('text-underline').setAttribute('aria-pressed', String(!!style.underline));
   const ed = $('text-editor');
   if (!ed.hidden) {
     const scale = canvas.getBoundingClientRect().width / W;
+    ed.style.textAlign = textStyle.align || 'left';
+    ed.style.lineHeight = textStyle.spacing || 1.35;
+    ed.style.padding = 12 * scale + 'px';
     ed.style.fontSize = textStyle.fontSize * scale + 'px';
     ed.style.fontWeight = textStyle.bold ? 'bold' : 'normal';
     ed.style.textDecoration = textStyle.underline ? 'underline' : 'none';
@@ -1755,13 +2332,17 @@ function syncTextControls() {
 }
 function formatText(change) {
   const target = selected?.type === 'text' && page().objects.includes(selected) ? selected : null;
-  if (target) {
+  if (target && !editingText) {
     checkpoint();
     Object.assign(target, change);
     textStyle = {
       fontSize: target.fontSize || 28,
       bold: !!target.bold,
       underline: !!target.underline,
+      list: target.list || 'none',
+      align: target.align || 'left',
+      spacing: target.spacing || 1.35,
+      border: target.border !== false,
     };
     render();
     thumbnails();
@@ -1797,6 +2378,7 @@ const boardStage = document.querySelector('.board-stage'),
 // Keep browser context menus out of the drawing area.
 boardStage.addEventListener('contextmenu', (event) => event.preventDefault());
 function layoutBoard() {
+  positionPanelToggles();
   boardStage.style.overflow = boardZoom <= 1 ? 'hidden' : 'auto';
   const availableWidth = boardStage.offsetWidth,
     availableHeight = boardStage.offsetHeight;

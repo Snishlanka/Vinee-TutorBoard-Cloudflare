@@ -56,23 +56,41 @@ PNG and PDF exports are intended for sharing; use the JSON file to resume editin
 
 The browser right-click menu is disabled inside the board area. Use **Ctrl+V / Cmd+V** to paste a screenshot there.
 
-- **Workspace control bar:** page navigation, **+ Page**, **Undo**, **Redo**, **Insert image**, and the page/tools panel toggles. Text-formatting controls appear here when relevant. Undo, Redo, and Insert image remain available when the tools panel is hidden, including in presentation/fullscreen mode.
-- **Board toolbar:** Chalk, Eraser, Text, and Move, followed by ink colors and the Stroke control. Move sits immediately after Text; Stroke sits to the right of the ink colors when space permits.
-- **Tools panel:** Highlight, Line, Rectangle, Circle, Triangle, Parallelogram, and Arrow share the tool grid. Graph and geometry controls and selected-object editing options are also in this panel.
+- **Workspace control bar:** page navigation, **+ Page**, **Undo**, **Redo**, **Insert image**, and editing actions. Small arrows toggle the pages and tools panels: they sit at the screen edges when collapsed and follow each panel's board-facing edge when expanded. Text-formatting controls appear here when relevant. Undo, Redo, and Insert image remain available when the tools panel is hidden, including in presentation/fullscreen mode.
+- **Board toolbar:** Chalk, the Eraser dropdown, Text box, Line / Arrow dropdown, and Move, followed by Yellow, Red, White, Black, and Blue presets, the custom color picker, and the Stroke control.
+- **Tools panel:** Highlight, Rectangle, Circle, and Triangle share the tool grid. Adjust a rectangle using its gold handle to create a parallelogram. Graph and geometry controls and selected-object editing options are also in this panel.
 
 Controls wrap on smaller screens. Hover over icon-only buttons to see their tool names.
 
 ### Resize and rotate shapes
 
-Choose Rectangle, Triangle, Parallelogram, or Arrow and drag to draw. An arrow points from the start of the drag to the end. Select **Move**, then click the shape. Open **Show tools** if needed to access the shape controls.
+Choose a shape and drag to draw; it is selected automatically. Use **Move** to select it again. Drag any white corner to resize, or hold Shift to preserve proportions. Drag the round handle above the shape to rotate (Shift snaps to 15 degrees). The gold rectangle/parallelogram handle adjusts its slant; move it back to the left edge to restore a rectangle. Drag the gold triangle top point to change its shape. Selected objects show handles without a surrounding dashed box. The sidebar still offers exact dimensions and rotation.
 
-Set **Rotation (degrees)** or use the 15-degree buttons. Drag the corner handle to resize proportionally, or enter **Shape width** and **Shape height** and choose **Resize shape**. Horizontal or vertical arrows can have one zero dimension. Transformations support Undo/Redo, local drafts, lesson files, and exports. Older app versions do not recognize the new shape types.
+Open the **Line / Arrow** dropdown next to Text in the board toolbar to choose a connector. Drag either endpoint to adjust it and the gold middle handle to curve it. Arrowheads follow the curve direction. Connectors have endpoint and bend handles without a rotation handle. These changes support Undo/Redo, local drafts, lesson JSON, PNG, and PDF export.
+
+### Text boxes
+
+Choose **Text box (T)** and drag on the board to set its size (a click uses the default size). Type into the resizable box, then choose **Place text** or press Ctrl+Enter / Cmd+Enter. Formatting applies to the whole box: size, bold, underline, bullets or numbering, left/center/right alignment, and line spacing. The **Border** checkbox shows or hides the box border without changing its layout; the choice is saved and exported. Each entered paragraph is a list item, and long text wraps to the box width. Text can grow vertically beyond the initial box height to avoid hiding content.
+
+Select a text box with **Move** to resize or format it. Choose **Edit text** (also available on touch screens), or double-click the text, to edit its contents. Escape cancels an active edit.
+
+Select any object with **Move** and press **Delete**, or use the toolbar **Delete** button. Undo restores it. Delete inside a text field edits text normally.
+
+Click the **Eraser** dropdown to choose **Point eraser** or **Whole object**. Point erasing exposes a size slider; Whole object disables that slider.
+
+### Pen, touch, and smooth handwriting
+
+Under **Drawing input**, choose **Pen only** before resting your palm on the board. Only input reported by the browser as a pen is accepted in this mode. **Auto detect** allows finger drawing initially and ignores touch after detecting a pen for the remainder of the session. **Finger drawing** explicitly enables one-finger input. The chosen mode is remembered on this device. Extra touch contacts cannot change or end an active stroke, and canceled gestures roll back.
+
+A passive stylus reported as a finger cannot be distinguished from a palm by the app; use Finger drawing for that device. Physical pen/touch behavior should be checked on the target screen.
+
+Freehand chalk and highlighting use smooth quadratic curves, including in saved lesson rendering and exports. Intermediate pen samples and the final lift-off position are retained.
 
 ### Page order and paper controls
 
-In **Show pages**, select a page and use **Move earlier** or **Move later**. Its content and editing history move with it. New pages from any Add Page button are inserted immediately after the selected page and inherit its paper and board color. Saved lessons, drafts, and PDF exports follow the new page order.
+Open the pages panel with the left-edge arrow, select a page and use **Move earlier** or **Move later**. Its content and editing history move with it. New pages from any Add Page button are inserted immediately after the selected page and inherit its paper and board color. Saved lessons, drafts, and PDF exports follow the new page order.
 
-Use **Hide paper controls** in the workspace bar to hide the whole row above the board, including drawing tools, ink colors, stroke, zoom, board color, paper style, and Clear page. The board automatically refits to the freed space while preserving its proportions. **Show paper controls** restores the row. This changes visibility without changing the lesson's paper settings; the panel starts visible when the app is reopened.
+Use the small up/down arrow below the paper-controls row (or at the top center when collapsed) to hide or show the whole row above the board, including drawing tools, ink colors, stroke, zoom, board color, paper style, and Clear page. The board automatically refits to the freed space while preserving its proportions. The down arrow restores the row. This changes visibility without changing the lesson's paper settings; the panel starts visible when the app is reopened.
 
 ### Paste a screenshot
 
@@ -232,3 +250,7 @@ Use `--check` instead of `--write` to verify formatting without modifying files.
 ## Third-party software
 
 PDF export uses the bundled `pdf-lib` library. Its license is included in [vendor/pdf-lib-LICENSE.md](vendor/pdf-lib-LICENSE.md). This repository does not currently include a license for the TutorBoard application itself.
+
+### Drawing regression checks
+
+Run `node --test tests/*.test.cjs` for the unit regressions. `tests/browser-editing.cjs` exercises real browser event handlers, shape controls, text editing/history, and simultaneous pen/touch events. Start the local server on port 8765, make Playwright available through `PLAYWRIGHT_MODULE` (or a normal installation), and run `node tests/browser-editing.cjs`; it uses installed Microsoft Edge. Override `BOARD_URL` if needed. Synthetic input tests do not replace a physical stylus/touch check.

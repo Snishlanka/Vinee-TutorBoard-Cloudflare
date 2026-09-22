@@ -24,7 +24,8 @@ function setup() {
     toast: (message) => calls.push(message),
     boardColors: { white: '#fff' },
     images: new Map(),
-    ctx: { measureText: () => ({ width: 100 }) },
+    ctx: { measureText: (s) => ({ width: s.length * 10 }) },
+    canvas: { getBoundingClientRect: () => ({ width: 1440 }) },
     textFont: () => '',
     textLineHeight: () => 30,
     TutorMath: { valid: () => true },
@@ -140,4 +141,185 @@ test('new shapes draw paths under rotation for board and export renderer', () =>
     assert.ok(calls.filter((call) => call[0] === 'lineTo').length >= 3);
     assert.ok(calls.some((call) => call[0] === 'stroke'));
   }
+});
+
+test('curved connector hits, bounds and tangent arrowhead follow the bend', () => {
+  const { c } = setup(),
+    o = { ...shape('arrow', 200, 0), bendX: 0, bendY: 200 };
+  assert.equal(c.hit(o, { x: 200, y: 200 }), true);
+  assert.equal(c.hit(o, { x: 200, y: 100 }), false);
+  const b = c.objectBounds(o);
+  for (let i = 0; i <= 100; i++) {
+    const p = c.connectorPoint(o, i / 100);
+    assert.ok(p.x >= b.x && p.x <= b.right && p.y >= b.y && p.y <= b.bottom);
+  }
+  const [tip, left, right] = c.arrowPoints(o);
+  assert.ok((left.y + right.y) / 2 > tip.y);
+  assert.equal(c.validObject({ ...o, bendY: Infinity }), false);
+});
+test('on-object controls bend, slant, rotate and resize without changing opposite anchor', () => {
+  const { c } = setup();
+  let old = { ...shape('arrow', 200, 0), rotation: 90 },
+    target = { ...old };
+  c.dragControl({ original: old, target, handle: { kind: 'bend' } }, { x: 150, y: 100 }, false);
+  assert.ok(Math.abs(target.bendY - 100) < 1e-8);
+  old = shape('rect');
+  target = { ...old };
+  c.dragControl({ original: old, target, handle: { kind: 'skew' } }, { x: 160, y: 100 }, false);
+  assert.equal(target.skew, 0.3);
+  for (const [u, v] of [
+    [0, 0],
+    [1, 0],
+    [1, 1],
+    [0, 1],
+  ]) {
+    old = { ...shape('rect'), rotation: 37 };
+    target = { ...old };
+    const center = { x: 200, y: 150 };
+    const anchor = c.rotatePoint(
+      { x: old.x + (1 - u) * old.w, y: old.y + (1 - v) * old.h },
+      center,
+      37
+    );
+    const corner = c.rotatePoint({ x: old.x + u * old.w, y: old.y + v * old.h }, center, 37);
+    c.dragControl(
+      { original: old, target, handle: { kind: 'corner', u, v } },
+      { x: anchor.x + 2 * (corner.x - anchor.x), y: anchor.y + 2 * (corner.y - anchor.y) },
+      false
+    );
+    const next = c.rotatePoint(
+      { x: target.x + (1 - u) * target.w, y: target.y + (1 - v) * target.h },
+      { x: target.x + target.w / 2, y: target.y + target.h / 2 },
+      37
+    );
+    assert.ok(Math.hypot(next.x - anchor.x, next.y - anchor.y) < 1e-7);
+    assert.ok(Math.abs(target.w - 400) < 1e-7);
+  }
+});
+test('text boxes wrap long words and preserve list layout through lesson validation', () => {
+  const { c } = setup();
+  const o = {
+    ...shape('text', 80, 80),
+    text: 'abcdefghijk\nsecond',
+    list: 'number',
+    align: 'center',
+    spacing: 1.5,
+    fontSize: 28,
+  };
+  const lines = c.textLayout(o, c.ctx);
+  assert.ok(lines.length > 2);
+  assert.ok(lines.every((line) => line.width <= 80));
+  assert.ok(lines[0].text.startsWith('1. '));
+  assert.equal(c.validObject(JSON.parse(JSON.stringify(o))), true);
+  assert.equal(c.validObject({ ...o, spacing: NaN }), false);
+  assert.equal(c.validObject({ ...o, list: 'invalid' }), false);
+});
+test('freehand smoothing emits quadratic curves and retains both stroke endpoints', () => {
+  const { c } = setup(),
+    calls = [];
+  const ctx = new Proxy(
+    {},
+    {
+      get:
+        (_, key) =>
+        (...args) =>
+          calls.push([key, ...args]),
+    }
+  );
+  c.smoothStroke(ctx, [
+    { x: 0, y: 0 },
+    { x: 10, y: 20 },
+    { x: 20, y: 0 },
+    { x: 30, y: 20 },
+  ]);
+  assert.deepEqual(calls[0], ['moveTo', 0, 0]);
+  assert.equal(calls.filter((x) => x[0] === 'quadraticCurveTo').length, 2);
+  assert.deepEqual(calls.at(-1), ['lineTo', 30, 20]);
+});
+
+test('triangle top vertex moves in local coordinates and survives transforms and validation', () => {
+  const { c } = setup();
+  for (const [w, h] of [
+    [200, 100],
+    [-200, -100],
+  ]) {
+    const old = { ...shape('triangle', w, h), rotation: 37 },
+      target = { ...old };
+    const center = { x: old.x + w / 2, y: old.y + h / 2 };
+    const position = c.rotatePoint({ x: old.x - w / 2, y: old.y + h / 4 }, center, 37);
+    c.dragControl({ original: old, target, handle: { kind: 'apex' } }, position, false);
+    assert.ok(Math.abs(target.apexX + 0.5) < 1e-8);
+    assert.ok(Math.abs(target.apexY - 0.25) < 1e-8);
+    const vertex = c.selectionHandles(target).find((h) => h.kind === 'apex');
+    assert.ok(Math.hypot(vertex.x - position.x, vertex.y - position.y) < 1e-7);
+    assert.equal(c.hit(target, position), true);
+    const bounds = c.objectBounds(target);
+    assert.ok(
+      position.x >= bounds.x &&
+        position.x <= bounds.right &&
+        position.y >= bounds.y &&
+        position.y <= bounds.bottom
+    );
+    assert.equal(c.validObject(JSON.parse(JSON.stringify(target))), true);
+    assert.equal(c.validObject({ ...target, apexX: Infinity }), false);
+    assert.equal(c.validObject({ ...target, apexY: 1 }), false);
+    c.resizeShape(target, { ...target }, 400, 200);
+    assert.ok(Math.abs(target.apexX + 0.5) < 1e-8);
+  }
+});
+test('connector controls omit rotation and selection does not draw a surrounding box', () => {
+  const { c } = setup(),
+    calls = [];
+  c.ctx = new Proxy(
+    {},
+    {
+      get:
+        (_, name) =>
+        (...args) =>
+          calls.push([name, ...args]),
+    }
+  );
+  for (const type of ['line', 'arrow']) {
+    c.selected = shape(type);
+    assert.equal(
+      c.selectionHandles(c.selected).some((h) => h.kind === 'rotate'),
+      false
+    );
+    c.drawSelection();
+  }
+  assert.equal(
+    calls.some((call) => call[0] === 'strokeRect'),
+    false
+  );
+  assert.equal(
+    calls.some((call) => call[0] === 'setLineDash' && call[1].length),
+    false
+  );
+});
+test('text box border can be hidden without changing layout or validation', () => {
+  const { c } = setup(),
+    calls = [];
+  const ctx = new Proxy(
+    {},
+    {
+      get: (_, name) =>
+        name === 'measureText'
+          ? (s) => ({ width: s.length * 10 })
+          : (...args) => calls.push([name, ...args]),
+    }
+  );
+  const o = { ...shape('text'), box: true, text: 'Hello world', fontSize: 28, border: true };
+  c.drawObject(ctx, o, 'white');
+  assert.ok(calls.some((call) => call[0] === 'strokeRect'));
+  const layout = JSON.stringify(c.textLayout(o, ctx));
+  calls.length = 0;
+  o.border = false;
+  c.drawObject(ctx, o, 'white');
+  assert.equal(
+    calls.some((call) => call[0] === 'strokeRect'),
+    false
+  );
+  assert.equal(JSON.stringify(c.textLayout(o, ctx)), layout);
+  assert.equal(c.validObject(o), true);
+  assert.equal(c.validObject({ ...o, border: 'false' }), false);
 });

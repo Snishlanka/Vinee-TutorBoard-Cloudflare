@@ -112,12 +112,14 @@ test('paper toggle collapses the whole toolbar row and updates accessibility/lay
   assert.equal(elements['paper-controls'].hidden, true);
   assert.equal(elements['board-controls'].hidden, true);
   assert.equal(elements['toggle-paper']['aria-expanded'], 'false');
-  assert.equal(elements['toggle-paper'].textContent, 'Show paper controls');
+  assert.equal(elements['toggle-paper'].textContent, '\u25be');
+  assert.equal(elements['toggle-paper']['aria-label'], 'Show paper controls');
   c.togglePaperControls();
   assert.equal(elements['paper-controls'].hidden, false);
   assert.equal(elements['board-controls'].hidden, false);
   assert.equal(elements['toggle-paper']['aria-expanded'], 'true');
-  assert.equal(elements['toggle-paper'].textContent, 'Hide paper controls');
+  assert.equal(elements['toggle-paper'].textContent, '\u25b4');
+  assert.equal(elements['toggle-paper']['aria-label'], 'Hide paper controls');
   assert.deepEqual(c.pages, old);
   assert.deepEqual(events, ['layout', 'layout']);
 });
