@@ -24,6 +24,10 @@ let inputMode = 'auto';
 let penSeen = false;
 let pointerSnapshot = null;
 let editingText = null;
+let shapeClipboard = null;
+let shapePasteCount = 0;
+const SHAPE_CLIPBOARD_FORMAT = 'vinee-tutorboard-object';
+const shapeFillTiles = new Map();
 let textStyle = {
   fontSize: 28,
   bold: false,
@@ -61,6 +65,38 @@ function toast(s) {
 }
 function isEditableShape(o) {
   return !!o && ['rect', 'circle', 'line', 'triangle', 'parallelogram', 'arrow'].includes(o.type);
+}
+function canFillShape(o) {
+  return !!o && ['rect', 'circle', 'triangle', 'parallelogram'].includes(o.type);
+}
+function shapeFillStyle(c, o) {
+  const pattern = o.fillPattern || 'solid';
+  if (pattern === 'solid') return o.fill;
+  const key = pattern + ':' + o.fill;
+  let tile = shapeFillTiles.get(key);
+  if (!tile) {
+    tile = document.createElement('canvas');
+    tile.width = tile.height = 18;
+    const paint = tile.getContext('2d');
+    paint.strokeStyle = o.fill;
+    paint.lineWidth = 1.5;
+    paint.beginPath();
+    for (let x = -18; x <= 18; x += 18) {
+      paint.moveTo(x, pattern === 'forward' ? 18 : 0);
+      paint.lineTo(x + 18, pattern === 'forward' ? 0 : 18);
+    }
+    paint.stroke();
+    if (shapeFillTiles.size >= 32) shapeFillTiles.delete(shapeFillTiles.keys().next().value);
+    shapeFillTiles.set(key, tile);
+  }
+  return c.createPattern(tile, 'repeat') || o.fill;
+}
+function paintShapeFill(c, o) {
+  if (!canFillShape(o) || !o.fill) return;
+  c.save();
+  c.fillStyle = shapeFillStyle(c, o);
+  c.fill();
+  c.restore();
 }
 function canTransform(o) {
   return isEditableShape(o) || ['geometry', 'image'].includes(o.type);
@@ -224,6 +260,7 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     c.beginPath();
     trianglePoints(o).forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
     c.closePath();
+    paintShapeFill(c, o);
     c.stroke();
   }
   if (o.type === 'parallelogram' || (o.type === 'rect' && o.skew)) {
@@ -233,6 +270,7 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     c.lineTo(o.x + o.w * (1 - (o.skew ?? 0.25)), o.y + o.h);
     c.lineTo(o.x, o.y + o.h);
     c.closePath();
+    paintShapeFill(c, o);
     c.stroke();
   }
   if (o.type === 'arrow') {
@@ -245,7 +283,12 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     c.lineTo(right.x, right.y);
     c.stroke();
   }
-  if (o.type === 'rect' && !o.skew) c.strokeRect(o.x, o.y, o.w, o.h);
+  if (o.type === 'rect' && !o.skew) {
+    c.beginPath();
+    c.rect(o.x, o.y, o.w, o.h);
+    paintShapeFill(c, o);
+    c.stroke();
+  }
   if (o.type === 'circle') {
     c.beginPath();
     c.ellipse(
@@ -257,6 +300,7 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
       0,
       Math.PI * 2
     );
+    paintShapeFill(c, o);
     c.stroke();
   }
   if (o.type === 'text') {
@@ -340,7 +384,7 @@ function render(showSelection = true) {
   drawPaper(ctx, page().background, page().boardColor);
   for (const o of page().objects) drawObject(ctx, o);
   if (preview) drawObject(ctx, preview);
-  if (showSelection && selected && tool === 'move') drawSelection();
+  if (showSelection && selected && tool !== 'eraser') drawSelection();
   $('empty-hint').style.display =
     page().objects.length || preview || !$('text-editor').hidden ? 'none' : 'flex';
   $('undo').disabled = !page().undo.length;
@@ -765,6 +809,32 @@ canvas.onpointerdown = (e) => {
     redo: page().redo.slice(),
   };
   canvas.setPointerCapture(e.pointerId);
+  // Object manipulation is temporary; it never changes the chosen drawing tool.
+  if (tool !== 'eraser' && !e.altKey) {
+    const handle = selected && controlAt(selected, p);
+    if (handle) {
+      checkpoint();
+      gesture = { kind: 'control', handle, start: p, original: clone(selected), target: selected };
+      canvas.style.cursor = controlCursor(handle, selected);
+      return;
+    }
+    const target = [...page().objects].reverse().find((o) => hit(o, p));
+    if (target) {
+      selected = target;
+      syncSelection();
+      render();
+      checkpoint();
+      gesture = { kind: 'move', start: p, original: clone(target), target };
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+  }
+  selected = null;
+  syncSelection();
+  if (tool === 'move') {
+    render();
+    return;
+  }
   if (tool === 'text') {
     gesture = { kind: 'text-box', start: p, moved: false };
     preview = {
@@ -780,25 +850,6 @@ canvas.onpointerdown = (e) => {
       ...textStyle,
     };
     render();
-    return;
-  }
-  if (tool === 'move') {
-    const handle =
-      selected &&
-      selectionHandles(selected).find((h) => Math.hypot(p.x - h.x, p.y - h.y) < handleSize() * 1.6);
-    if (handle) {
-      checkpoint();
-      gesture = { kind: 'control', handle, start: p, original: clone(selected), target: selected };
-      return;
-    }
-    const target = [...page().objects].reverse().find((o) => hit(o, p));
-    selected = target || null;
-    syncSelection();
-    render();
-    if (!target) return;
-    checkpoint();
-    gesture = { kind: 'move', start: p, original: clone(target), target };
-    canvas.style.cursor = 'grabbing';
     return;
   }
   checkpoint();
@@ -820,7 +871,11 @@ canvas.onpointerdown = (e) => {
 };
 canvas.onpointermove = (e) => {
   observePen(e);
-  if (!gesture || e.pointerId !== activePointer?.id) return;
+  if (!gesture) {
+    updateHoverCursor(point(e), e.altKey);
+    return;
+  }
+  if (e.pointerId !== activePointer?.id) return;
   const p = point(e);
   if (gesture.kind === 'text-box') {
     const start = gesture.start;
@@ -924,18 +979,19 @@ function end(e) {
   if (preview) {
     const created = preview;
     page().objects.push(created);
-    if (isEditableShape(created)) {
-      setTool('move');
-      selected = created;
-      syncSelection();
-    }
+    selected = created;
+    syncSelection();
   }
   gesture = null;
   preview = null;
   refreshCursor();
+  if (e && Number.isFinite(e.clientX)) updateHoverCursor(point(e), e.altKey);
   render();
   thumbnails();
 }
+canvas.onpointerleave = () => {
+  if (!gesture) refreshCursor();
+};
 canvas.onpointerup = end;
 canvas.onpointercancel = (e) => {
   if (e.pointerId === activePointer?.id) cancelPointer();
@@ -971,7 +1027,6 @@ function commitText() {
     else page().objects.push(box);
     selected = editingText || box;
     editingText = null;
-    setTool('move');
     syncSelection();
     render();
     thumbnails();
@@ -1020,7 +1075,7 @@ function openTextBox(p, existing = null) {
   ed.focus({ preventScroll: true });
 }
 canvas.ondblclick = (e) => {
-  if (!['move', 'text'].includes(tool) || (e.pointerType && !acceptsPointer(e))) return;
+  if (tool === 'eraser' || e.altKey || (e.pointerType && !acceptsPointer(e))) return;
   const p = point(e),
     target = [...page().objects].reverse().find((o) => o.type === 'text' && hit(o, p));
   if (target) {
@@ -1261,12 +1316,11 @@ async function insertImageFile(file) {
       width,
     };
     targetPage.objects.push(object);
-    setTool('move');
     selected = object;
     syncSelection();
     render();
     thumbnails();
-    toast('Image added. Drag it to position, then choose Chalk.');
+    toast('Image added. Drag to move; hold Alt to draw over it.');
   } catch (error) {
     toast(error.message || 'This image could not be opened.');
   }
@@ -1381,6 +1435,17 @@ function validObject(o) {
     ['bendX', 'bendY', 'skew', 'apexX', 'apexY'].some(
       (key) => o[key] !== undefined && !Number.isFinite(o[key])
     )
+  )
+    return false;
+  if (
+    o.fillPattern !== undefined &&
+    (!canFillShape(o) || !['solid', 'forward', 'backward'].includes(o.fillPattern))
+  )
+    return false;
+  if (
+    o.fill !== undefined &&
+    o.fill !== null &&
+    (!canFillShape(o) || typeof o.fill !== 'string' || !/^#[0-9a-f]{6}$/i.test(o.fill))
   )
     return false;
   if (o.apexX !== undefined && (o.apexX < -2 || o.apexX > 3)) return false;
@@ -1574,11 +1639,112 @@ $('focus').onclick = () => {
 };
 syncPanels();
 
+// Board-object clipboard is separate from image and form-field paste.
+function clipboardTargetBlocked(event) {
+  return (
+    event.defaultPrevented ||
+    event.target?.closest?.('input, textarea, select') ||
+    event.target?.isContentEditable ||
+    !!document.querySelector('dialog[open]')
+  );
+}
+function shapeClipboardText(object) {
+  return JSON.stringify({ format: SHAPE_CLIPBOARD_FORMAT, version: 1, object });
+}
+function readShapeClipboard(text) {
+  if (typeof text !== 'string' || text.length > 1024 * 1024) return null;
+  try {
+    const data = JSON.parse(text);
+    return data?.format === SHAPE_CLIPBOARD_FORMAT &&
+      data.version === 1 &&
+      isEditableShape(data.object) &&
+      validObject(data.object)
+      ? data.object
+      : null;
+  } catch {
+    return null;
+  }
+}
+function copySelectedShape(event = null) {
+  if (event && clipboardTargetBlocked(event)) return false;
+  if (tool === 'eraser' || !page().objects.includes(selected) || !isEditableShape(selected))
+    return false;
+  if (activePointer) end();
+  const object = clone(selected),
+    text = shapeClipboardText(object);
+  if (text.length > 1024 * 1024) {
+    toast('This object is too large to copy.');
+    return false;
+  }
+  shapeClipboard = object;
+  shapePasteCount = 0;
+  if (event?.clipboardData) {
+    event.clipboardData.setData('text/plain', text);
+    event.preventDefault();
+  } else {
+    // The toolbar clipboard works even when system clipboard access is unavailable.
+    try {
+      navigator.clipboard?.writeText(text)?.catch(() => {});
+    } catch {}
+  }
+  syncSelection();
+  toast('Copied. Use Paste or Ctrl/Cmd + V.');
+  return true;
+}
+function pasteShape(object = shapeClipboard) {
+  if (!isEditableShape(object) || !validObject(object)) return false;
+  if (page().objects.length >= 10000) {
+    toast('This page is full. Paste on a new page.');
+    return false;
+  }
+  if (activePointer) end();
+  commitText();
+  const copy = clone(object),
+    bounds = objectBounds(copy),
+    offset = 24 * (shapePasteCount + 1);
+  let dx = offset,
+    dy = offset;
+  if (bounds.right - bounds.x <= W) dx = Math.max(-bounds.x, Math.min(dx, W - bounds.right));
+  if (bounds.bottom - bounds.y <= H) dy = Math.max(-bounds.y, Math.min(dy, H - bounds.bottom));
+  copy.x += dx;
+  copy.y += dy;
+  if (copy.erasures)
+    copy.erasures.forEach((mask) =>
+      mask.points.forEach((p) => {
+        p.x += dx;
+        p.y += dy;
+      })
+    );
+  checkpoint();
+  page().objects.push(copy);
+  shapePasteCount++;
+  selected = copy;
+  syncSelection();
+  render();
+  thumbnails();
+  return true;
+}
+function pasteBoardShape(event) {
+  if (clipboardTargetBlocked(event)) return;
+  const object = readShapeClipboard(event.clipboardData?.getData('text/plain'));
+  if (!object) return;
+  event.preventDefault();
+  if (JSON.stringify(object) !== JSON.stringify(shapeClipboard)) shapePasteCount = 0;
+  shapeClipboard = clone(object);
+  pasteShape(object);
+}
+$('copy-object').onpointerdown = (e) => e.preventDefault();
+$('paste-object').onpointerdown = (e) => e.preventDefault();
+$('copy-object').onclick = () => copySelectedShape();
+$('paste-object').onclick = () => pasteShape();
+document.addEventListener('copy', copySelectedShape);
+document.addEventListener('paste', pasteBoardShape);
+
 function deleteSelected() {
   if (activePointer) end();
   commitText();
   const at = page().objects.indexOf(selected);
-  if (tool !== 'move' || at < 0) return;
+  if (tool === 'eraser' || at < 0) return;
   checkpoint();
   page().objects.splice(at, 1);
   selected = null;
@@ -1604,7 +1770,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     $('save').click();
   } else if (!mod) {
-    if (e.key === 'Delete' && selected && tool === 'move') {
+    if (e.key === 'Delete' && selected && tool !== 'eraser') {
       e.preventDefault();
       deleteSelected();
       return;
@@ -1663,11 +1829,10 @@ function insertMath(o) {
   render();
   thumbnails();
   mathDialog.close();
-  setTool('move');
-  selected = o.type === 'geometry' ? o : null;
+  selected = o;
   syncSelection();
   render();
-  toast('Added to the board. Drag with Move; write over it with Chalk.');
+  toast('Added. Drag to move; hold Alt to draw over an object.');
 }
 function insertGraph(axesOnly = false) {
   try {
@@ -1810,9 +1975,22 @@ function parseNames(value) {
 }
 function syncSelection() {
   syncTextControls();
-  $('delete-object').disabled = !selected || !page().objects.includes(selected) || tool !== 'move';
+  $('copy-object').disabled =
+    tool === 'eraser' || !page().objects.includes(selected) || !isEditableShape(selected);
+  $('paste-object').disabled = !shapeClipboard;
+  $('shape-fill-options').hidden =
+    tool === 'eraser' || !page().objects.includes(selected) || !canFillShape(selected);
+  if (canFillShape(selected)) {
+    $('shape-fill-enabled').checked = !!selected.fill;
+    $('shape-fill-color').value = selected.fill || '#facc15';
+    $('shape-fill-color').disabled = !selected.fill;
+    $('shape-fill-pattern').value = selected.fillPattern || 'solid';
+    $('shape-fill-pattern').disabled = !selected.fill;
+  }
+  $('delete-object').disabled =
+    !selected || !page().objects.includes(selected) || tool === 'eraser';
   const visible =
-    selected && canTransform(selected) && page().objects.includes(selected) && tool === 'move';
+    selected && canTransform(selected) && page().objects.includes(selected) && tool !== 'eraser';
   $('object-options').hidden = !visible;
   $('geometry-edit').hidden = !visible || selected.type !== 'geometry';
   $('image-edit').hidden = !visible || selected.type !== 'image';
@@ -1839,6 +2017,49 @@ function syncSelection() {
 }
 function handleSize() {
   return (4 * W) / canvas.getBoundingClientRect().width;
+}
+function controlAt(o, p) {
+  let nearest = null,
+    distance = handleSize() * 1.6;
+  for (const h of selectionHandles(o)) {
+    const d = Math.hypot(p.x - h.x, p.y - h.y);
+    if (d < distance) {
+      distance = d;
+      nearest = h;
+    }
+  }
+  return nearest;
+}
+function controlCursor(handle, object) {
+  if (handle.kind === 'rotate') {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M18 7A8 8 0 1 0 20 14M18 2v6h-6" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 7A8 8 0 1 0 20 14M18 2v6h-6" fill="none" stroke="#16834a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '") 12 12, grab';
+  }
+  if (handle.kind !== 'corner') return 'move';
+  const angle =
+    (object.rotation || 0) +
+    (Math.atan2(
+      (handle.v ? 1 : -1) * Math.sign(object.h || 1),
+      (handle.u ? 1 : -1) * Math.sign(object.w || 1)
+    ) *
+      180) /
+      Math.PI;
+  return ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize'][
+    ((Math.round(angle / 45) % 4) + 4) % 4
+  ];
+}
+function updateHoverCursor(p, forceDraw = false) {
+  if (tool === 'eraser' || forceDraw) {
+    refreshCursor();
+    return;
+  }
+  const handle = selected && controlAt(selected, p);
+  canvas.style.cursor = handle
+    ? controlCursor(handle, selected)
+    : page().objects.some((o) => hit(o, p))
+      ? 'grab'
+      : toolCursor(tool);
 }
 function selectionHandles(o) {
   if (!canTransform(o) && o.type !== 'text') return [];
@@ -1878,13 +2099,30 @@ function selectionHandles(o) {
   return handles;
 }
 function drawSelection() {
-  const radius = handleSize();
+  // Keep touch targets generous while making the visible handles unobtrusive.
+  const radius = handleSize() / 2;
   ctx.save();
   ctx.strokeStyle = '#16834a';
   ctx.lineWidth = radius / 3;
   ctx.setLineDash([]);
   for (const h of selectionHandles(selected)) {
-    ctx.fillStyle = ['skew', 'bend', 'apex'].includes(h.kind) ? '#fbbf24' : '#ffffff';
+    if (h.kind === 'rotate') {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, handleSize() * 1.75, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#16834a';
+      ctx.font = handleSize() * 2.5 + 'px \"Segoe UI Symbol\",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('\u21bb', h.x, h.y);
+      continue;
+    }
+    ctx.fillStyle = ['skew', 'bend', 'apex'].includes(h.kind)
+      ? '#fbbf24'
+      : ['start', 'end'].includes(h.kind)
+        ? '#ffffff66'
+        : '#ffffff';
     ctx.beginPath();
     if (['rotate', 'bend', 'apex'].includes(h.kind)) ctx.arc(h.x, h.y, radius, 0, Math.PI * 2);
     else ctx.rect(h.x - radius, h.y - radius, radius * 2, radius * 2);
@@ -2074,6 +2312,23 @@ function resizeShape(o, old, w, h) {
     }));
   }
 }
+function setShapeFill(fill, pattern = selected?.fillPattern || 'solid') {
+  if (!canFillShape(selected) || !page().objects.includes(selected) || tool === 'eraser') return;
+  if (fill !== null && !/^#[0-9a-f]{6}$/i.test(fill)) return;
+  if (!['solid', 'forward', 'backward'].includes(pattern)) return;
+  if ((selected.fill || null) === fill && (selected.fillPattern || 'solid') === pattern) return;
+  checkpoint();
+  selected.fill = fill;
+  selected.fillPattern = pattern;
+  syncSelection();
+  render();
+  thumbnails();
+}
+$('shape-fill-enabled').onchange = (e) =>
+  setShapeFill(e.target.checked ? $('shape-fill-color').value : null);
+$('shape-fill-color').onchange = (e) => setShapeFill(e.target.value);
+$('shape-fill-pattern').onchange = (e) =>
+  setShapeFill(selected?.fill || $('shape-fill-color').value, e.target.value);
 $('shape-rotation').onchange = (e) => changeRotation(+e.target.value);
 $('shape-rotate-left').onclick = () => changeRotation((selected?.rotation || 0) - 15);
 $('shape-rotate-right').onclick = () => changeRotation((selected?.rotation || 0) + 15);

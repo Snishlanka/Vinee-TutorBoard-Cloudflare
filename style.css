@@ -1861,3 +1861,22 @@ body .workspace,
 body.present .workspace {
   padding-top: 0;
 }
+
+#shape-fill-options[hidden] {
+  display: none;
+}
+#object-options .shape-fill-toggle {
+  flex-direction: row;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#shape-fill-enabled {
+  width: auto;
+  margin: 0;
+}
+#shape-fill-color {
+  width: 100%;
+  height: 32px;
+  padding: 2px;
+}

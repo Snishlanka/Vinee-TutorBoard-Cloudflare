@@ -11,6 +11,8 @@ function setup() {
     W: 2880,
     H: 1080,
     selected: null,
+    shapeClipboard: null,
+    shapeFillTiles: new Map(),
     tool: 'move',
     Math,
     Number,
@@ -322,4 +324,118 @@ test('text box border can be hidden without changing layout or validation', () =
   assert.equal(JSON.stringify(c.textLayout(o, ctx)), layout);
   assert.equal(c.validObject(o), true);
   assert.equal(c.validObject({ ...o, border: 'false' }), false);
+});
+
+test('solid fills render before outlines and validate only for closed shapes', () => {
+  const { c } = setup();
+  for (const type of ['rect', 'circle', 'triangle', 'parallelogram']) {
+    const calls = [];
+    const context = new Proxy(
+      {},
+      {
+        get:
+          (_, key) =>
+          (...args) =>
+            calls.push([key, ...args]),
+      }
+    );
+    const o = { ...shape(type), rotation: 37, fill: '#facc15' };
+    c.drawObject(context, o, 'white');
+    assert.ok(
+      calls.findIndex((call) => call[0] === 'fill') <
+        calls.findIndex((call) => call[0] === 'stroke')
+    );
+    assert.equal(c.validObject(JSON.parse(JSON.stringify(o))), true);
+    calls.length = 0;
+    c.drawObject(context, { ...o, fill: null }, 'white');
+    assert.equal(
+      calls.some((call) => call[0] === 'fill'),
+      false
+    );
+  }
+  assert.equal(c.validObject({ ...shape('line'), fill: '#facc15' }), false);
+  assert.equal(c.validObject({ ...shape('rect'), fill: 'url(bad)' }), false);
+});
+test('fill changes checkpoint once and clearing restores no-fill', () => {
+  const { c, page, calls } = setup();
+  c.selected = shape('rect');
+  page.objects.push(c.selected);
+  c.setShapeFill('#facc15');
+  c.setShapeFill('#facc15');
+  assert.equal(c.selected.fill, '#facc15');
+  assert.deepEqual(calls, ['checkpoint', 'change']);
+  c.setShapeFill(null);
+  assert.equal(c.selected.fill, null);
+  c.setShapeFill('bad');
+  assert.deepEqual(calls, ['checkpoint', 'change', 'checkpoint', 'change']);
+});
+test('small visual controls retain wide hit targets, with orientation-aware cursors and rotation icon', () => {
+  const { c } = setup();
+  const o = shape('rect');
+  const corner = c.selectionHandles(o).find((h) => h.kind === 'corner' && h.u === 1 && h.v === 1);
+  assert.equal(c.controlAt(o, { x: corner.x + 10, y: corner.y }).kind, 'corner');
+  assert.equal(c.controlCursor(corner, o), 'nwse-resize');
+  assert.equal(c.controlCursor(corner, { ...o, rotation: 90 }), 'nesw-resize');
+  assert.equal(c.controlCursor({ kind: 'bend' }, o), 'move');
+  assert.ok(c.controlCursor({ kind: 'rotate' }, o).startsWith('url('));
+  const calls = [];
+  c.ctx = new Proxy(
+    {},
+    {
+      get:
+        (_, key) =>
+        (...args) =>
+          calls.push([key, ...args]),
+    }
+  );
+  c.selected = o;
+  c.drawSelection();
+  const rect = calls.find((call) => call[0] === 'rect');
+  assert.equal(rect[3], 8); // 4 display pixels at the test canvas scale.
+  assert.ok(calls.some((call) => call[0] === 'fillText' && call[1] === '\u21bb'));
+});
+
+test('diagonal fill styles tile in opposite directions and preserve outline paths', () => {
+  const { c } = setup(),
+    tileCalls = [];
+  c.document = {
+    createElement: () => ({
+      getContext: () =>
+        new Proxy(
+          {},
+          {
+            get:
+              (_, name) =>
+              (...args) =>
+                tileCalls.push([name, ...args]),
+          }
+        ),
+    }),
+  };
+  const fills = [];
+  const ctx = new Proxy(
+    {},
+    {
+      get: (_, name) =>
+        name === 'createPattern'
+          ? (tile, repeat) => {
+              fills.push([tile, repeat]);
+              return 'pattern';
+            }
+          : () => {},
+    }
+  );
+  for (const pattern of ['forward', 'backward']) {
+    tileCalls.length = 0;
+    const o = { ...shape('triangle'), fill: '#facc15', fillPattern: pattern };
+    c.drawObject(ctx, o, 'white');
+    const start = tileCalls.find((call) => call[0] === 'moveTo'),
+      end = tileCalls.find((call) => call[0] === 'lineTo');
+    assert.equal(start[2], pattern === 'forward' ? 18 : 0);
+    assert.equal(end[2], pattern === 'forward' ? 0 : 18);
+    assert.equal(c.validObject(JSON.parse(JSON.stringify(o))), true);
+  }
+  assert.equal(fills.length, 2);
+  assert.ok(fills.every(([, repeat]) => repeat === 'repeat'));
+  assert.equal(c.validObject({ ...shape('rect'), fillPattern: 'bad' }), false);
 });

@@ -24,12 +24,7 @@
       <div class="brand"><span class="mark">V</span><strong>Vinee TutorBoard</strong></div>
       <div class="lesson-details">
         <input id="title" aria-label="Lesson title" value="Untitled lesson" maxlength="100" />
-        <input
-          id="tutor-name"
-          aria-label="Tutor name"
-          placeholder="Tutor name"
-          maxlength="100"
-        />
+        <input id="tutor-name" aria-label="Tutor name" placeholder="Tutor name" maxlength="100" />
       </div>
       <div class="top-actions">
         <button id="theme-toggle" aria-pressed="false" title="Switch to dark theme">
@@ -51,6 +46,12 @@
       <div class="workspace-actions" role="group" aria-label="Edit lesson">
         <button id="undo" title="Undo">↶ Undo</button>
         <button id="redo" title="Redo">↷ Redo</button>
+        <button id="copy-object" title="Copy selected shape or line (Ctrl/Cmd+C)" disabled>
+          Copy
+        </button>
+        <button id="paste-object" title="Paste copied shape or line (Ctrl/Cmd+V)" disabled>
+          Paste
+        </button>
         <button id="delete-object" title="Delete selected object (Delete)" disabled>Delete</button>
         <button
           id="image"
@@ -294,6 +295,20 @@
             ><button id="apply-names">Apply names</button>
           </div>
           <div id="shape-edit" hidden>
+            <div id="shape-fill-options" hidden>
+              <label class="shape-fill-toggle"
+                ><input id="shape-fill-enabled" type="checkbox" /> Fill shape</label
+              >
+              <label for="shape-fill-pattern">Fill style</label>
+              <select id="shape-fill-pattern" disabled>
+                <option value="solid">Solid fill</option>
+                <option value="forward">/// Diagonal</option>
+                <option value="backward">&#92;&#92;&#92; Diagonal</option>
+              </select>
+              <label for="shape-fill-color">Fill color</label>
+              <input id="shape-fill-color" type="color" value="#facc15" disabled />
+              <p class="tip">Uncheck Fill shape for no fill.</p>
+            </div>
             <label
               >Rotation (degrees)<input id="shape-rotation" type="number" value="0" step="1"
             /></label>

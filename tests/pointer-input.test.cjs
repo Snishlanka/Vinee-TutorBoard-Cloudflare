@@ -41,6 +41,9 @@ function setup() {
     commitText() {},
     syncSelection() {},
     refreshCursor() {},
+    updateHoverCursor() {},
+    controlAt: () => null,
+    hit: () => false,
     render() {},
     thumbnails() {},
     checkpoint() {
@@ -121,4 +124,61 @@ test('pointer cancellation restores history and an empty coalesced list still dr
   assert.equal(board.undo.length, 0);
   assert.equal(board.redo.length, 1);
   assert.equal(c.activePointer, null);
+});
+
+for (const tool of ['pen', 'highlighter', 'rect', 'circle', 'triangle', 'line', 'arrow']) {
+  test(`${tool} remains active after drawing successive objects`, () => {
+    const { c, board } = setup();
+    c.tool = tool;
+    for (let id = 1; id <= 2; id++) {
+      c.canvas.onpointerdown(event(id, 'mouse', 100 * id, 100));
+      c.canvas.onpointerup(event(id, 'mouse', 100 * id + 50, 150));
+      assert.equal(c.tool, tool);
+      assert.equal(board.objects.length, id);
+      assert.equal(c.selected, board.objects.at(-1));
+    }
+  });
+}
+for (const type of ['pen', 'line', 'rect', 'text', 'image', 'graph', 'geometry']) {
+  test(`direct dragging moves ${type} while retaining the drawing tool`, () => {
+    const { c, board } = setup();
+    const object =
+      type === 'pen'
+        ? {
+            type,
+            points: [
+              { x: 10, y: 10 },
+              { x: 20, y: 20 },
+            ],
+          }
+        : { type, x: 10, y: 10, w: 100, h: 100 };
+    board.objects.push(object);
+    c.hit = () => true;
+    c.canvas.onpointerdown(event(1, 'mouse'));
+    assert.equal(c.gesture.kind, 'move');
+    assert.equal(c.canvas.style.cursor, 'grabbing');
+    c.canvas.onpointerup(event(1, 'mouse', 40, 50));
+    assert.equal(c.tool, 'pen');
+    assert.equal(board.objects.length, 1);
+    assert.equal((object.points?.[0] || object).x, 40);
+    assert.equal((object.points?.[0] || object).y, 50);
+    assert.equal(board.undo.length, 1);
+  });
+}
+test('Alt draws over an object and eraser still erases instead of moving', () => {
+  const { c, board } = setup();
+  board.objects.push({ type: 'rect', x: 0, y: 0, w: 100, h: 100 });
+  c.hit = () => true;
+  c.canvas.onpointerdown({ ...event(1, 'mouse'), altKey: true });
+  assert.equal(c.gesture.kind, 'pen');
+  c.canvas.onpointerup({ ...event(1, 'mouse', 40, 50), altKey: true });
+  assert.equal(board.objects.length, 2);
+  let erased = false;
+  c.erase = () => {
+    erased = true;
+  };
+  c.tool = 'eraser';
+  c.canvas.onpointerdown(event(2, 'mouse'));
+  assert.equal(c.gesture.kind, 'eraser');
+  assert.equal(erased, true);
 });

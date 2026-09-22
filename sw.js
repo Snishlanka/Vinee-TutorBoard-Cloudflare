@@ -1,5 +1,5 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = '20260922-text-editor-hint';
+const REVISION = '20260922-sticky-tools-direct-move';
 const ASSETS = [
   'index.html',
   'theme.js',

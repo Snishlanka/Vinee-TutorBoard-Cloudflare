@@ -59,14 +59,14 @@ function setup({ failRead = false, failImage = false, changePage = false } = {})
   return { context, original, other, messages, calls };
 }
 const png = { type: 'image/png', size: 100 };
-test('image insertion resizes, selects Move, checkpoints, and signals autosave', async () => {
+test('image insertion resizes, selects the image without switching tools, checkpoints, and signals autosave', async () => {
   const { context, original, calls } = setup();
   await context.insertImageFile(png);
   assert.equal(original.objects.length, 1);
   assert.equal(original.objects[0].w, 900);
   assert.equal(original.objects[0].h, 600);
   assert.equal(context.selected, original.objects[0]);
-  assert.deepEqual(calls, ['checkpoint', 'move', 'changed']);
+  assert.deepEqual(calls, ['checkpoint', 'changed']);
 });
 test('unsupported, oversized, unreadable and broken images do not change the lesson', async () => {
   for (const [options, file] of [

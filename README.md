@@ -6,9 +6,10 @@ Built with HTML, CSS, and vanilla JavaScript, TutorBoard runs entirely in the br
 
 ## Features
 
-- **Drawing tools:** chalk, highlighter, straight lines, rectangles, ellipses, triangles, parallelograms, and arrows, with adjustable colors and stroke widths.
-- **Flexible erasing:** erase an area or remove a whole object; undo and redo board edits.
-- **Text and images:** enter Sinhala or English text, adjust size, bold and underline, and insert PNG, JPEG, or WebP images. Move objects and resize or rotate images.
+- **Drawing tools:** smooth chalk/highlighter strokes, a Line / Arrow dropdown with curve controls, rectangles that can be slanted into parallelograms, ellipses, and adjustable triangles. Small on-object handles support resizing, rotation, and hover cursors.
+- **Shape styling and editing:** solid or diagonal-pattern fills, independent fill colors, shape/line Copy and Paste, and selected-object Delete with Undo/Redo. The Eraser dropdown offers point and whole-object modes.
+- **Text boxes and images:** drag to size a Sinhala or English text box with wrapping, bullets/numbering, alignment, spacing, bold/underline, and an optional border. Insert or paste PNG, JPEG, or WebP images; move, resize, and rotate them.
+- **Pen/touch input:** Auto detect, Pen only for palm rejection, and single-finger drawing modes.
 - **Lesson pages:** create and delete pages, navigate with thumbnails, and choose blank, grid, or ruled paper on white, black, green, or blue boards.
 - **Mathematics:** plot up to four functions on a coordinate grid, insert axes, and add labeled geometry diagrams with adjustable size and rotation.
 - **Presentation controls:** light and dark interface themes, board zoom, fit-to-window, full screen, and a presentation mode that hides side panels.
@@ -40,23 +41,23 @@ Open the local address printed by Wrangler. There is no `package.json` or `npm r
 1. Enter a lesson title and, optionally, the tutor's name.
 2. Choose the board color and paper style, then use Chalk, Text, or Insert image to add content.
 3. Use **+ Page** to insert a page immediately after the current page. Open **Show pages** to browse, then use **Move earlier** or **Move later** to reorder the selected page.
-4. Open **Graph & axes** or **Geometry diagrams** to insert mathematics content. Use **Move** to position it.
+4. Open **Graph & axes** or **Geometry diagrams** to insert mathematics content. Drag it directly to position it.
 5. Use **Present** or **Full screen** when teaching or sharing your screen.
 6. Choose **Save lesson** to keep an editable backup. Use **Open lesson** to continue from that JSON file later.
 
-| Action | Output |
-| --- | --- |
-| Save lesson | Editable `.json` file containing lesson pages and embedded images |
-| Export page | `.png` image of the current page |
-| Export lesson PDF | `.pdf` containing every lesson page |
+| Action            | Output                                                            |
+| ----------------- | ----------------------------------------------------------------- |
+| Save lesson       | Editable `.json` file containing lesson pages and embedded images |
+| Export page       | `.png` image of the current page                                  |
+| Export lesson PDF | `.pdf` containing every lesson page                               |
 
 PNG and PDF exports are intended for sharing; use the JSON file to resume editing. Undo and redo history is not preserved in saved lesson files or restored drafts.
 
 ### Where to find the controls
 
-The browser right-click menu is disabled inside the board area. Use **Ctrl+V / Cmd+V** to paste a screenshot there.
+The browser right-click menu is disabled inside the board area. Use the toolbar clipboard buttons for shapes, or **Ctrl+C / Cmd+C** and **Ctrl+V / Cmd+V**. Screenshot paste remains available through Ctrl/Cmd+V.
 
-- **Workspace control bar:** page navigation, **+ Page**, **Undo**, **Redo**, **Insert image**, and editing actions. Small arrows toggle the pages and tools panels: they sit at the screen edges when collapsed and follow each panel's board-facing edge when expanded. Text-formatting controls appear here when relevant. Undo, Redo, and Insert image remain available when the tools panel is hidden, including in presentation/fullscreen mode.
+- **Workspace control bar:** page navigation, **+ Page**, **Undo**, **Redo**, **Copy**, **Paste**, **Delete**, and **Insert image**. Small arrows toggle the pages and tools panels: they sit at the screen edges when collapsed and follow each panel's board-facing edge when expanded. Text-formatting controls appear here when relevant. These editing actions remain available when the tools panel is hidden, including in presentation/fullscreen mode.
 - **Board toolbar:** Chalk, the Eraser dropdown, Text box, Line / Arrow dropdown, and Move, followed by Yellow, Red, White, Black, and Blue presets, the custom color picker, and the Stroke control.
 - **Tools panel:** Highlight, Rectangle, Circle, and Triangle share the tool grid. Adjust a rectangle using its gold handle to create a parallelogram. Graph and geometry controls and selected-object editing options are also in this panel.
 
@@ -64,17 +65,29 @@ Controls wrap on smaller screens. Hover over icon-only buttons to see their tool
 
 ### Resize and rotate shapes
 
-Choose a shape and drag to draw; it is selected automatically. Use **Move** to select it again. Drag any white corner to resize, or hold Shift to preserve proportions. Drag the round handle above the shape to rotate (Shift snaps to 15 degrees). The gold rectangle/parallelogram handle adjusts its slant; move it back to the left edge to restore a rectangle. Drag the gold triangle top point to change its shape. Selected objects show handles without a surrounding dashed box. The sidebar still offers exact dimensions and rotation.
+Choose a shape and drag to draw; it is selected automatically, and your chosen drawing tool stays active. Hover over any object (including freehand strokes, text, images, and graphs) for the grab cursor, then drag to move it or click to select it. Draw on empty space to keep using your selected tool. Hold **Alt** to draw over an existing object. Eraser continues to erase; the dedicated **Move** tool is also available. Drag any white corner to resize, or hold Shift to preserve proportions. Drag the **rotation-arrow symbol** above the shape to rotate (Shift snaps to 15 degrees). The gold rectangle/parallelogram handle adjusts its slant; move it back to the left edge to restore a rectangle. Drag the gold triangle top point to change its shape. Selected objects show tiny handles without a surrounding dashed box. The cursor changes over resize, move/adjustment, and rotation handles; drag targets remain larger than the visible squares. The sidebar still offers exact dimensions and rotation.
 
 Open the **Line / Arrow** dropdown next to Text in the board toolbar to choose a connector. Drag either endpoint to adjust it and the gold middle handle to curve it. Arrowheads follow the curve direction. Connectors have endpoint and bend handles without a rotation handle. These changes support Undo/Redo, local drafts, lesson JSON, PNG, and PDF export.
+
+### Shape fills
+
+Select a rectangle, slanted rectangle/parallelogram, circle/ellipse, or triangle by clicking it, then open the right tools panel. Under **Fill shape**, enable fill and choose **Solid fill**, **/// Diagonal**, or the opposite diagonal pattern. **Fill color** controls the solid area or hatch lines independently of the outline. Uncheck **Fill shape** for no fill. Lines and arrows do not have an enclosed area, so fill controls are hidden for them.
+
+Fill styles survive movement, resizing, rotation, copying, Undo/Redo, saved lessons, local drafts, and PNG/PDF exports. Hatch spacing uses board coordinates, so it scales with board zoom.
+
+### Copy and paste shapes or lines
+
+Select a shape or connector by clicking it. Use **Copy** then **Paste**, or Ctrl/Cmd+C then Ctrl/Cmd+V while focus is outside text/form fields. Copies preserve outline, curve/slant/triangle adjustments, rotation, fill pattern/color, and erasures. Each paste is a separate object and Undo step, offset from the original and kept within the board where it fits. You can change pages before pasting.
+
+The toolbar retains the last copied shape for this app session, even if the browser cannot write to the system clipboard. Keyboard copying uses the browser clipboard, and keyboard pasting accepts a validated TutorBoard object or a screenshot. A later text or image copy is not replaced with a stale shape. Plain text stays normal text in form fields. Board-object clipboard payloads are limited to 1 MiB and the toolbar clipboard resets on reload.
 
 ### Text boxes
 
 Choose **Text box (T)** and drag on the board to set its size (a click uses the default size). Type into the resizable box, then choose **Place text** or press Ctrl+Enter / Cmd+Enter. Formatting applies to the whole box: size, bold, underline, bullets or numbering, left/center/right alignment, and line spacing. The **Border** checkbox shows or hides the box border without changing its layout; the choice is saved and exported. Each entered paragraph is a list item, and long text wraps to the box width. Text can grow vertically beyond the initial box height to avoid hiding content.
 
-Select a text box with **Move** to resize or format it. Choose **Edit text** (also available on touch screens), or double-click the text, to edit its contents. Escape cancels an active edit.
+Select a text box by clicking it to resize or format it. Choose **Edit text** (also available on touch screens), or double-click the text, to edit its contents. Escape cancels an active edit. The empty-board welcome message is hidden while a text box is being created or edited, and only returns when the board is empty with no pending text.
 
-Select any object with **Move** and press **Delete**, or use the toolbar **Delete** button. Undo restores it. Delete inside a text field edits text normally.
+Select any object by clicking it and press **Delete**, or use the toolbar **Delete** button. Undo restores it. Delete inside a text field edits text normally.
 
 Click the **Eraser** dropdown to choose **Point eraser** or **Whole object**. Point erasing exposes a size slider; Whole object disables that slider.
 
@@ -90,11 +103,11 @@ Freehand chalk and highlighting use smooth quadratic curves, including in saved 
 
 Open the pages panel with the left-edge arrow, select a page and use **Move earlier** or **Move later**. Its content and editing history move with it. New pages from any Add Page button are inserted immediately after the selected page and inherit its paper and board color. Saved lessons, drafts, and PDF exports follow the new page order.
 
-Use the small up/down arrow below the paper-controls row (or at the top center when collapsed) to hide or show the whole row above the board, including drawing tools, ink colors, stroke, zoom, board color, paper style, and Clear page. The board automatically refits to the freed space while preserving its proportions. The down arrow restores the row. This changes visibility without changing the lesson's paper settings; the panel starts visible when the app is reopened.
+Use the small up/down arrow below the paper-controls row (or at the top center when collapsed) to hide or show the whole row above the board, including drawing tools, ink colors, stroke, zoom, board color, paper style, and Clear page. The board automatically refits to the freed space while preserving its proportions. The down arrow restores the row. This small arrow overlays the board edge instead of reserving an empty row; side arrows follow the inner edges of open panels and return to the screen edges when collapsed. This changes visibility without changing the lesson's paper settings; the panel starts visible when the app is reopened.
 
 ### Paste a screenshot
 
-Copy a screenshot to the clipboard (for example, with Windows Snipping Tool), return to TutorBoard, and press **Ctrl+V** on Windows/Linux or **Cmd+V** on macOS while focus is outside text fields. The image is added to the current page and Move is selected so you can position or resize it. Pasted images support Undo, local drafts, lesson files, and exports.
+Copy a screenshot to the clipboard (for example, with Windows Snipping Tool), return to TutorBoard, and press **Ctrl+V** on Windows/Linux or **Cmd+V** on macOS while focus is outside text fields. The image is added to the current page and selected for positioning or resizing while your chosen tool stays active. Pasted images support Undo, local drafts, lesson files, and exports.
 
 PNG, JPEG, and WebP clipboard images are supported, with the same 15 MiB limit and resizing as Insert image. Normal text-field paste is preserved, and board paste is paused while a dialog is open. If the clipboard contains only a file path or text rather than image data, use **Insert image** instead.
 
@@ -115,20 +128,22 @@ Set the x and y ranges before inserting a graph. Leave the function field empty,
 
 ### Keyboard shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| `P` | Chalk |
-| `H` | Highlighter |
-| `E` | Eraser |
-| `T` | Text |
-| `V` | Move |
-| `Ctrl/Cmd + V` | Paste a copied image onto the board (outside text fields) |
-| `Ctrl/Cmd + Z` | Undo |
-| `Ctrl/Cmd + Shift + Z` | Redo |
-| `Ctrl/Cmd + S` | Download lesson JSON |
-| `Ctrl/Cmd + Enter` | Place text while editing |
-| `Escape` | Cancel text entry or exit presentation mode |
-| Hold `Shift` while drawing with Chalk | Draw a straight line |
+| Shortcut                              | Action                                                |
+| ------------------------------------- | ----------------------------------------------------- |
+| `P`                                   | Chalk                                                 |
+| `H`                                   | Highlighter                                           |
+| `E`                                   | Eraser                                                |
+| `T`                                   | Text box                                              |
+| `V`                                   | Move                                                  |
+| `Ctrl/Cmd + C`                        | Copy the selected shape or line (outside text fields) |
+| `Ctrl/Cmd + V`                        | Paste a copied TutorBoard shape/line or screenshot    |
+| `Delete`                              | Delete the selected object                            |
+| `Ctrl/Cmd + Z`                        | Undo                                                  |
+| `Ctrl/Cmd + Shift + Z`                | Redo                                                  |
+| `Ctrl/Cmd + S`                        | Download lesson JSON                                  |
+| `Ctrl/Cmd + Enter`                    | Place text while editing                              |
+| `Escape`                              | Cancel text entry or exit presentation mode           |
+| Hold `Shift` while drawing with Chalk | Draw a straight line                                  |
 
 Tool shortcuts apply when you are not typing in a form field.
 
@@ -167,10 +182,10 @@ Wrangler prints the deployed URL. The configured Worker name is `vinee-tutorboar
 
 Use these settings for a Cloudflare Workers repository deployment:
 
-| Setting | Value |
-| --- | --- |
-| Root directory | Repository root |
-| Build command | Leave empty |
+| Setting        | Value                 |
+| -------------- | --------------------- |
+| Root directory | Repository root       |
+| Build command  | Leave empty           |
 | Deploy command | `npx wrangler deploy` |
 
 The configuration serves assets from the repository root, enables the `workers.dev` address, disables preview URLs, and returns missing-asset responses without a single-page-app fallback.
@@ -212,13 +227,16 @@ The configuration serves assets from the repository root, enables the `workers.d
 
 ## Development and verification
 
-Edit the static source files directly and preview them with a local server. Run the service worker, image-paste, shape, and page-control regression checks with `node --test tests/sw.test.cjs tests/image-paste.test.cjs tests/shapes.test.cjs tests/pages.test.cjs`. This checkout does not include build scripts.
+Edit the static source files directly and preview them with a local server. Run all unit regressions with `node --test tests/*.test.cjs`, covering offline navigation, image paste, shape geometry and fills, clipboard behavior, pointer input, and page controls. This checkout does not include build scripts.
 
 `sw.js` contains a cache `REVISION` and an `ASSETS` list. When changing cached application files, update the cache revision before release; include new offline assets in both `ASSETS` and `.assetsignore`. Otherwise, returning users can continue receiving the previous cached application.
 
 Before publishing changes, manually verify:
 
-- Drawing, text placement, object movement, erasing, and undo/redo.
+- Drawing and smoothing, text-box placement/editing/border toggles, object movement, tiny handles/hover cursors, both eraser modes, and Undo/Redo.
+- Shape/line Copy/Paste on the same and different pages; all three fill styles; Delete; and regular text/screenshot clipboard behavior.
+- Edge-arrow panel placement on desktop/mobile and the top arrow without a reserved blank row.
+- Physical pen/palm input on the target teaching screen.
 - Page navigation, board backgrounds, graphs, and geometry diagrams.
 - Saving and reopening a lesson, including images, and exporting PNG and PDF.
 - Restoring a local draft after reopening the app.
@@ -239,13 +257,13 @@ Use `--check` instead of `--write` to verify formatting without modifying files.
 
 ## Troubleshooting
 
-| Problem | What to check |
-| --- | --- |
-| Offline access is unavailable | Use HTTPS or localhost, open online first, and wait for **Ready offline**. |
-| Changes do not appear after deployment | Check the service worker revision, choose **Check updates**, then close all app windows and reopen. |
-| Autosave fails | Download the lesson with **Save lesson** and check whether browser storage is available or full. |
-| A lesson file will not open | Use a TutorBoard JSON export. The importer accepts files up to 40 MiB and 100 pages and validates their contents. |
-| A new asset returns 404 after deployment | Ensure the file is included in `.assetsignore`. |
+| Problem                                  | What to check                                                                                                     |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Offline access is unavailable            | Use HTTPS or localhost, open online first, and wait for **Ready offline**.                                        |
+| Changes do not appear after deployment   | Check the service worker revision, choose **Check updates**, then close all app windows and reopen.               |
+| Autosave fails                           | Download the lesson with **Save lesson** and check whether browser storage is available or full.                  |
+| A lesson file will not open              | Use a TutorBoard JSON export. The importer accepts files up to 40 MiB and 100 pages and validates their contents. |
+| A new asset returns 404 after deployment | Ensure the file is included in `.assetsignore`.                                                                   |
 
 ## Third-party software
 
@@ -253,4 +271,4 @@ PDF export uses the bundled `pdf-lib` library. Its license is included in [vendo
 
 ### Drawing regression checks
 
-Run `node --test tests/*.test.cjs` for the unit regressions. `tests/browser-editing.cjs` exercises real browser event handlers, shape controls, text editing/history, and simultaneous pen/touch events. Start the local server on port 8765, make Playwright available through `PLAYWRIGHT_MODULE` (or a normal installation), and run `node tests/browser-editing.cjs`; it uses installed Microsoft Edge. Override `BOARD_URL` if needed. Synthetic input tests do not replace a physical stylus/touch check.
+Run `node --test tests/*.test.cjs` for the unit regressions. `tests/browser-editing.cjs` exercises real browser event handlers, shape controls, text editing/history, welcome-message visibility, and simultaneous pen/touch events. `tests/browser-shapes.cjs` checks native keyboard shape/text copy-paste, fill-pattern rendering, hover cursors, history, JSON save/reopen, and PNG export. Start the local server on port 8765, make Playwright available through `PLAYWRIGHT_MODULE` (or a normal installation), and run `node tests/browser-editing.cjs` and `node tests/browser-shapes.cjs`; both use installed Microsoft Edge. Override `BOARD_URL` if needed. Synthetic input tests do not replace a physical stylus/touch check.
