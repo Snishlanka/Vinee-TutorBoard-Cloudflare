@@ -272,3 +272,5 @@ PDF export uses the bundled `pdf-lib` library. Its license is included in [vendo
 ### Drawing regression checks
 
 Run `node --test tests/*.test.cjs` for the unit regressions. `tests/browser-editing.cjs` exercises real browser event handlers, shape controls, text editing/history, welcome-message visibility, and simultaneous pen/touch events. `tests/browser-shapes.cjs` checks native keyboard shape/text copy-paste, fill-pattern rendering, hover cursors, history, JSON save/reopen, and PNG export. Start the local server on port 8765, make Playwright available through `PLAYWRIGHT_MODULE` (or a normal installation), and run `node tests/browser-editing.cjs` and `node tests/browser-shapes.cjs`; both use installed Microsoft Edge. Override `BOARD_URL` if needed. Synthetic input tests do not replace a physical stylus/touch check.
+
+Fit to window fills the full available board width and height on laptops and monitors, including after panel changes. Display proportions adapt to the screen; saved lesson coordinates and export dimensions remain unchanged. Zoom in to scroll around a larger view.

@@ -1055,7 +1055,8 @@ function openTextBox(p, existing = null) {
     y = Math.max(0, Math.min(p.y, H - 50));
   ed.hidden = false;
   ed.style.left = x * scale + 'px';
-  ed.style.top = y * scale + 'px';
+  ed.style.top = y * (r.height / H) + 'px';
+  ed.dataset.displayScale = scale;
   ed.style.width = Math.min(existing?.w || p.w || 520, W - x) * scale + 'px';
   ed.style.height = Math.min(existing?.h || p.h || 180, H - y) * scale + 'px';
   ed.dataset.x = x;
@@ -1069,7 +1070,7 @@ function openTextBox(p, existing = null) {
   place.hidden = false;
   place.style.left = x * scale + 'px';
   place.style.top =
-    Math.min(r.height - 32, y * scale + Math.min(existing?.h || p.h || 180, H - y) * scale + 6) +
+    Math.min(r.height - 32, (y + Math.min(existing?.h || p.h || 180, H - y)) * (r.height / H) + 6) +
     'px';
   syncTextControls();
   render();
@@ -2578,6 +2579,8 @@ function syncTextControls() {
   const ed = $('text-editor');
   if (!ed.hidden) {
     const scale = canvas.getBoundingClientRect().width / W;
+    ed.style.transformOrigin = 'top left';
+    ed.style.transform = `scaleY(${canvas.getBoundingClientRect().height / H / scale})`;
     ed.style.textAlign = textStyle.align || 'left';
     ed.style.lineHeight = textStyle.spacing || 1.35;
     ed.style.padding = 12 * scale + 'px';
@@ -2639,9 +2642,9 @@ function layoutBoard() {
   const availableWidth = boardStage.offsetWidth,
     availableHeight = boardStage.offsetHeight;
   if (!availableWidth || !availableHeight) return;
-  const fit = Math.min((availableWidth - 4) / W, (availableHeight - 4) / H);
-  const w = Math.max(1, W * fit * boardZoom),
-    h = Math.max(1, H * fit * boardZoom);
+  // Fill the available viewport on both axes; logical lesson coordinates stay fixed.
+  const w = Math.max(1, (availableWidth - 4) * boardZoom),
+    h = Math.max(1, (availableHeight - 4) * boardZoom);
   boardWrap.style.width = w + 'px';
   boardWrap.style.height = h + 'px';
   // Auto margins cannot center oversized content safely; explicit positive offsets do.
@@ -2661,10 +2664,14 @@ function layoutBoard() {
   const ed = $('text-editor');
   if (!ed.hidden) {
     const scale = w / W;
+    const previousScale = Number(ed.dataset.displayScale) || scale;
+    ed.style.width = (parseFloat(ed.style.width) / previousScale) * scale + 'px';
+    ed.style.height = (parseFloat(ed.style.height) / previousScale) * scale + 'px';
+    ed.dataset.displayScale = scale;
     ed.style.left = Number(ed.dataset.x) * scale + 'px';
-    ed.style.top = Number(ed.dataset.y) * scale + 'px';
+    ed.style.top = Number(ed.dataset.y) * (h / H) + 'px';
     $('text-place').style.left = ed.style.left;
-    $('text-place').style.top = Number(ed.dataset.y) * scale + 95 + 'px';
+    $('text-place').style.top = Math.min(h - 32, Number(ed.dataset.y) * (h / H) + parseFloat(ed.style.height) * (h / H) / scale + 6) + 'px';
     syncTextControls();
   }
 }
