@@ -1,3 +1,4 @@
+let laserTrails = [], laserFrame = null;
 'use strict';
 const $ = (id) => document.getElementById(id),
   canvas = $('board'),
@@ -458,6 +459,7 @@ $('delete-page-dialog').addEventListener('cancel', () => {
 });
 
 function update() {
+  clearLaser();
   syncPageNavigation();
   // Appearance changes and page reordering must retain a valid selection.
   if (!page().objects.includes(selected)) selected = null;
@@ -477,6 +479,7 @@ function update() {
 }
 // Functional cursor icons use a small SVG with a precise drawing hotspot.
 function toolCursor(t) {
+  if (t === 'laser') return 'crosshair';
   if (t === 'move') return 'grab';
   if (t === 'text') return 'text';
   if (t !== 'pen' && t !== 'eraser') return 'crosshair';
@@ -511,6 +514,7 @@ function refreshCursor() {
 }
 function setTool(t) {
   if (activePointer) end();
+  clearLaser();
   commitText();
   tool = t;
   if (t !== 'move') selected = null;
@@ -525,6 +529,7 @@ function setTool(t) {
   if (t !== 'eraser') closeEraserMenu();
   $('eraser-size').disabled = eraserMode === 'object';
   $('status').textContent =
+    t === 'laser' ? 'Laser pointer: drag to highlight; the trail fades automatically (L)' :
     t === 'eraser'
       ? eraserMode === 'point'
         ? 'Point eraser · Erase only the area you touch'
@@ -752,6 +757,7 @@ function acceptsPointer(e) {
   return true;
 }
 function cancelPointer() {
+  if (gesture?.kind === 'laser') clearLaser();
   if (pointerSnapshot) {
     page().objects = pointerSnapshot.objects;
     page().undo = pointerSnapshot.undo;
@@ -804,6 +810,14 @@ canvas.onpointerdown = (e) => {
   commitText();
   const p = point(e);
   activePointer = { id: e.pointerId, type: e.pointerType };
+  if (tool === 'laser') {
+    canvas.setPointerCapture(e.pointerId);
+    pointerSnapshot = null;
+    gesture = { kind: 'laser', trail: [] };
+    laserTrails.push(gesture.trail);
+    addLaserPoint(p);
+    return;
+  }
   pointerSnapshot = {
     objects: clone(page().objects),
     undo: page().undo.slice(),
@@ -878,6 +892,11 @@ canvas.onpointermove = (e) => {
   }
   if (e.pointerId !== activePointer?.id) return;
   const p = point(e);
+  if (gesture.kind === 'laser') {
+    const samples = e.getCoalescedEvents?.();
+    for (const sample of samples?.length ? samples : [e]) addLaserPoint(point(sample));
+    return;
+  }
   if (gesture.kind === 'text-box') {
     const start = gesture.start;
     gesture.moved = Math.hypot(p.x - start.x, p.y - start.y) > 10;
@@ -965,6 +984,7 @@ function end(e) {
   pointerSnapshot = null;
   if (id !== undefined && canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
   if (!gesture) return;
+  if (gesture.kind === 'laser') { gesture = null; refreshCursor(); return; }
   if (gesture.kind === 'text-box') {
     const box = { ...preview };
     if (!gesture.moved) {
@@ -1777,7 +1797,7 @@ document.addEventListener('keydown', (e) => {
       deleteSelected();
       return;
     }
-    const keys = { p: 'pen', h: 'highlighter', e: 'eraser', t: 'text', v: 'move' };
+    const keys = { p: 'pen', h: 'highlighter', e: 'eraser', t: 'text', v: 'move', l: 'laser' };
     if (keys[e.key.toLowerCase()]) setTool(keys[e.key.toLowerCase()]);
     if (e.key === 'Escape' && document.body.classList.contains('present')) $('focus').click();
   }
@@ -1865,12 +1885,15 @@ function insertGraph(axesOnly = false) {
       ymin,
       ymax,
       curves,
+      xTickStep: $('graph-grid-step-x').value === '' ? null : Number($('graph-grid-step-x').value),
+      yTickStep: $('graph-grid-step-y').value === '' ? null : Number($('graph-grid-step-y').value),
       gridSubdivisionsX: Number($('graph-grid-subdivisions-x').value),
       gridSubdivisionsY: Number($('graph-grid-subdivisions-y').value),
       gridOpacity: Number($('graph-grid-opacity').value) / 100,
       color,
       width,
     };
+    if ([['xTickStep', xmax-xmin], ['yTickStep', ymax-ymin]].some(([key, span]) => o[key] != null && (o[key] <= 0 || span/o[key] > 200))) throw Error('Axis intervals must be positive, with no more than 200 intervals per axis. Leave blank for Auto.');
     if (!TutorMath.valid(o))
       throw Error(
         'Choose increasing x and y ranges (span at least 0.01; endpoints within ±1,000,000).'
@@ -2006,6 +2029,8 @@ function syncSelection() {
   $('graph-grid-options').hidden = !graphSelected;
   if (graphSelected) {
     syncGraphCurveColors();
+    $('selected-grid-step-x').value = selected.xTickStep ?? '';
+    $('selected-grid-step-y').value = selected.yTickStep ?? '';
     $('selected-grid-subdivisions-x').value = selected.gridSubdivisionsX ?? 1;
     $('selected-grid-subdivisions-y').value = selected.gridSubdivisionsY ?? 1;
     $('selected-grid-opacity').value = Math.round((selected.gridOpacity ?? 0.35) * 100);
@@ -2086,7 +2111,7 @@ function controlCursor(handle, object) {
   ];
 }
 function updateHoverCursor(p, forceDraw = false) {
-  if (tool === 'eraser' || forceDraw) {
+  if (tool === 'laser' || tool === 'eraser' || forceDraw) {
     refreshCursor();
     return;
   }
@@ -2803,7 +2828,7 @@ let graphLensPress = null;
 canvas.addEventListener('pointerdown', e => {
   hideGraphLens();
   graphLensPress = null;
-  if (e.button !== 0 || e.altKey || tool === 'eraser' || !acceptsPointer(e) || activePointer) return;
+  if (e.button !== 0 || e.altKey || tool === 'laser' || tool === 'eraser' || !acceptsPointer(e) || activePointer) return;
   const p = point(e), graph = [...page().objects].reverse().find(o => hit(o,p));
   if (graph?.type === 'graph' && insideGraphPlot(graph, p)) graphLensPress = {id:e.pointerId,graph,x:e.clientX,y:e.clientY};
 }, true);
@@ -2848,7 +2873,9 @@ function lensPointAt(px, py) {
       if(!Number.isFinite(value)||!Number.isFinite(derivative)||Math.abs(derivative)<1e-12) break;
       root-=value/derivative;
     }
-    if(Math.abs(root)<1e-10 && f(0)===0) root=0;
+    // A repeated root (e.g. x^2) converges slowly. Prefer the verified
+    // exact origin when its remaining error is far below one lens pixel.
+    if(Math.abs(root * kx)<0.01 && f(0)===0) root=0;
     if(Math.abs(f(root))<1e-9) consider(root,0,'X-intercept (numeric)');
   }
   if(!best) {
@@ -2892,3 +2919,54 @@ function graphLensPointer(e) {
 $('graph-lens-canvas').onpointermove=graphLensPointer;
 $('graph-lens-canvas').onpointerdown=graphLensPointer;
 $('graph-lens-canvas').onpointerleave=()=>paintGraphLens(null);
+
+for (const [axis, key] of [['x', 'xTickStep'], ['y', 'yTickStep']]) {
+  const input = $('selected-grid-step-' + axis);
+  input.oninput = () => input.setCustomValidity('');
+  input.onchange = () => {
+    if (selected?.type !== 'graph' || !page().objects.includes(selected)) return;
+    const value = input.value === '' ? null : Number(input.value);
+    if (!TutorMath.valid({ ...selected, [key]: value })) {
+      input.setCustomValidity('Use a positive interval, at most 200 intervals across this axis. Leave blank for Auto.');
+      input.reportValidity(); return;
+    }
+    input.setCustomValidity('');
+    if ((selected[key] ?? null) === value) return;
+    checkpoint(); selected[key] = value; syncSelection(); render(); thumbnails();
+  };
+}
+
+// Laser trails live only in an overlay, never in page objects or history.
+function clearLaser() {
+  if (laserFrame !== null) cancelAnimationFrame(laserFrame);
+  laserFrame = null; laserTrails = [];
+  const overlay = $('laser-overlay');
+  if (overlay) overlay.getContext('2d').clearRect(0,0,W,H);
+}
+function addLaserPoint(p) {
+  const trail = gesture.trail, now = performance.now(), last = trail.at(-1);
+  if (last && Math.hypot(last.x-p.x,last.y-p.y)<0.5) last.time=now;
+  else trail.push({...p,time:now});
+  if (laserFrame === null) laserFrame=requestAnimationFrame(paintLaser);
+}
+function paintLaser(now) {
+  laserFrame=null;
+  const c=$('laser-overlay').getContext('2d');
+  c.clearRect(0,0,W,H);
+  const scale=W/canvas.getBoundingClientRect().width;
+  c.lineCap='round';c.lineJoin='round';c.strokeStyle='#ff253e';c.fillStyle='#ff253e';
+  c.lineWidth=3*scale;c.shadowColor='#ff253e';c.shadowBlur=8*scale;
+  laserTrails=laserTrails.filter(trail=>{
+    while(trail.length && now-trail[0].time>1100)trail.shift();
+    return trail.length || gesture?.trail===trail;
+  });
+  for(const trail of laserTrails){
+    for(let i=0;i<trail.length;i++){
+      const p=trail[i];c.globalAlpha=Math.max(0,1-(now-p.time)/1100);
+      if(i){c.beginPath();c.moveTo(trail[i-1].x,trail[i-1].y);c.lineTo(p.x,p.y);c.stroke();}
+      else {c.beginPath();c.arc(p.x,p.y,1.5*scale,0,Math.PI*2);c.fill();}
+    }
+  }
+  c.globalAlpha=1;c.shadowBlur=0;
+  if(laserTrails.some(trail=>trail.length))laserFrame=requestAnimationFrame(paintLaser);
+}

@@ -180,6 +180,7 @@
                   <button data-tool="arrow"><span>&#8599;</span>Arrow</button>
                 </div>
               </div>
+              <button data-tool="laser" title="Laser pointer (L): drag for a fading trail" aria-label="Laser pointer"><span style="color:#ef4444">&#9673;</span></button>
               <button data-tool="move" title="Move an object (V)"><span>&#10021;</span></button>
             </div>
             <div class="ink-controls" role="group" aria-label="Ink color">
@@ -236,6 +237,7 @@
         <div class="board-stage">
           <div class="board-wrap">
             <canvas id="board" width="2880" height="1080" aria-label="Drawing whiteboard"></canvas>
+            <canvas id="laser-overlay" width="2880" height="1080" aria-hidden="true"></canvas>
             <div id="empty-hint">
               <span>Every great lesson starts here.</span
               ><small>Pick up your chalk and make the first mark.</small>
@@ -274,11 +276,13 @@
           </button>
         </div>
         <div id="graph-grid-options" hidden><h3>GRAPH COLORS</h3><div id="graph-curve-colors"></div><p class="math-help">Click a graph to magnify a point; drag to move it. Escape closes the lens.</p><h3>GRAPH GRID</h3><div class="ranges">
+ <label>X-axis interval<input id="selected-grid-step-x" type="number" min="0" step="any" placeholder="Auto (e.g. 1, 2, 0.5)" /></label>
+ <label>Y-axis interval<input id="selected-grid-step-y" type="number" min="0" step="any" placeholder="Auto (e.g. 1, 2, 0.5)" /></label>
  <label>X-axis subdivisions<input id="selected-grid-subdivisions-x" type="number" min="1" max="20" step="1" value="5" required /></label>
  <label>Y-axis subdivisions<input id="selected-grid-subdivisions-y" type="number" min="1" max="20" step="1" value="5" required /></label>
  </div>
  <label>Grid opacity <output id="selected-grid-opacity-value">35%</output><input id="selected-grid-opacity" type="range" min="0" max="100" value="35" /></label>
- <p class="math-help">Divide each major axis tick interval into 5 or 10 small intervals (1 = no subdivisions). X and Y follow their own axis scales. Opacity affects grid lines, not axes or curves.</p></div>
+ <p class="math-help">Leave axis intervals blank for Auto, or enter a positive step (up to 200 intervals per axis). Divide each major axis tick interval into 5 or 10 small intervals (1 = no subdivisions). X and Y follow their own axis scales. Opacity affects grid lines, not axes or curves.</p></div>
         <div id="object-options" hidden>
           <div class="section-head" id="object-heading">SELECTED OBJECT</div>
           <div id="geometry-edit" hidden>
@@ -441,11 +445,13 @@ x^2</textarea>
           ><label>y maximum<input id="ymax" type="number" value="10" step="any" required /></label>
         </div>
 <div class="ranges">
- <label>X-axis subdivisions<input id="graph-grid-subdivisions-x" type="number" min="1" max="20" step="1" value="1" required /></label>
- <label>Y-axis subdivisions<input id="graph-grid-subdivisions-y" type="number" min="1" max="20" step="1" value="1" required /></label>
+ <label>X-axis interval<input id="graph-grid-step-x" type="number" min="0" step="any" placeholder="Auto (e.g. 1, 2, 0.5)" value="1" /></label>
+ <label>Y-axis interval<input id="graph-grid-step-y" type="number" min="0" step="any" placeholder="Auto (e.g. 1, 2, 0.5)" value="1" /></label>
+ <label>X-axis subdivisions<input id="graph-grid-subdivisions-x" type="number" min="1" max="20" step="1" value="5" required /></label>
+ <label>Y-axis subdivisions<input id="graph-grid-subdivisions-y" type="number" min="1" max="20" step="1" value="5" required /></label>
  </div>
  <label>Grid opacity <output id="graph-grid-opacity-value">35%</output><input id="graph-grid-opacity" type="range" min="0" max="100" value="35" /></label>
- <p class="math-help">Divide each major axis tick interval into 5 or 10 small intervals (1 = no subdivisions). X and Y follow their own axis scales. Opacity affects grid lines, not axes or curves.</p>
+ <p class="math-help">Leave axis intervals blank for Auto, or enter a positive step (up to 200 intervals per axis). Divide each major axis tick interval into 5 or 10 small intervals (1 = no subdivisions). X and Y follow their own axis scales. Opacity affects grid lines, not axes or curves.</p>
         <p class="math-help">
           Leave functions empty to insert only a coordinate grid. Axes appear when zero is inside
           the selected range.

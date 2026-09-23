@@ -1890,3 +1890,5 @@ body.present .workspace {
 
 #graph-lens-canvas { pointer-events: auto; cursor: crosshair; touch-action: none; }
 #graph-lens-point { max-width: 320px; white-space: normal; text-align: center; width: max-content; }
+
+#laser-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }

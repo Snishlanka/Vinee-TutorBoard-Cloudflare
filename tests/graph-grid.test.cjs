@@ -35,3 +35,14 @@ test('grid opacity is isolated from axis lines and labels',()=>{
  assert.ok(labels.every(a=>a===1));
  assert.equal(ctx.globalAlpha,1);
 });
+
+test('custom intervals use independent zero-aligned axis ticks and subdivisions',()=>{
+ assert.deepEqual(Array.from(m.ticks(-2,2,1)),[-2,-1,0,1,2]);
+ assert.deepEqual(Array.from(m.ticks(-1,1,.5)),[-1,-.5,0,.5,1]);
+ assert.deepEqual(Array.from(m.ticks(-10,10,5)),[-10,-5,0,5,10]);
+ assert.equal(m.minorTicks(0,1,5,1).length,4);
+ assert.equal(m.minorTicks(.1,.4,10,1).length,2);
+ assert.ok(m.valid({...graph,xTickStep:1,yTickStep:.5}));
+ assert.ok(m.valid({...graph,xTickStep:null}));
+ for(const xTickStep of [0,-1,.0001,NaN,'1']) assert.equal(m.valid({...graph,xTickStep}),false);
+});

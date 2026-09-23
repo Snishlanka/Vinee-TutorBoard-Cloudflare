@@ -282,3 +282,7 @@ Select a graph and open the tools panel to change each curve color under **GRAPH
 Inside the graph lens, move the pointer to inspect coordinates and click to pin a green point marker. Nearby curves and axes snap to their values; nearby intercepts are refined numerically and labeled. The readout rounds values to nine significant digits; it is not a symbolic exact-value solver. Moving away retains the pinned point; click another point to replace it.
 
 The magnifier cursor and click-to-zoom apply only inside the graph plot grid. Graph labels and outer margins use the move cursor.
+
+Use **X-axis interval** and **Y-axis interval** to set major grid/tick spacing independently (for example 1, 2, 5, or 0.5). Leave blank for automatic spacing. Subdivisions divide that chosen interval. These settings are available when inserting a graph and when selecting one under GRAPH GRID, and persist in lessons and exports.
+
+New graphs default to an interval of **1** and **5 subdivisions** on both axes (small intervals of 0.2).
