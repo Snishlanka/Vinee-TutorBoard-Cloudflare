@@ -1,5 +1,5 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = '20260923-full-board-viewport';
+const REVISION = '20260923-interactive-graph-lens';
 const ASSETS = [
   'index.html',
   'theme.js',

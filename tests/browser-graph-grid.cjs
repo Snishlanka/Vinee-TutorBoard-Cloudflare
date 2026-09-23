@@ -1,0 +1,27 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const b=await chromium.launch({channel:'msedge',headless:true});
+ try{
+  const p=await b.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
+  await p.goto('http://127.0.0.1:8765');await p.waitForFunction(()=>window.TutorBoard);
+  await p.evaluate(()=>openMath('graph'));
+  await p.locator('#graph-grid-subdivisions-x').fill('5');
+  await p.locator('#graph-grid-subdivisions-y').fill('10');
+  await p.locator('#graph-grid-opacity').fill('60');
+  await p.locator('#axes-only').click();
+  assert.ok(await p.evaluate(()=>selected.type==='graph'&&selected.gridSubdivisionsX===5&&selected.gridSubdivisionsY===10&&selected.gridOpacity===.6));
+  await p.evaluate(()=>{document.body.classList.remove('tools-hidden');syncPanels();});
+  await p.locator('#selected-grid-subdivisions-x').fill('10');
+  await p.locator('#selected-grid-subdivisions-x').press('Tab');
+  await p.locator('#selected-grid-opacity').fill('0');
+  await p.locator('#selected-grid-opacity').dispatchEvent('change');
+  assert.ok(await p.evaluate(()=>selected.gridOpacity===0&&selected.gridSubdivisionsX===10&&validObject(JSON.parse(JSON.stringify(selected)))));
+  await p.locator('#undo').click();
+  assert.equal(await p.evaluate(()=>page().objects[0].gridOpacity),.6);
+  await p.locator('#redo').click();
+  assert.equal(await p.evaluate(()=>page().objects[0].gridOpacity),0);
+  assert.deepEqual(errors,[]);
+  console.log('Axis grid insert, independent subdivisions, opacity editing, persistence validation and undo/redo passed.');
+ }finally{await b.close();}
+})().catch(e=>{console.error(e);process.exitCode=1});

@@ -130,6 +130,19 @@ const TutorMath = (() => {
       values.push(Math.abs(v) < step * 1e-8 ? 0 : +v.toPrecision(8));
     return values;
   }
+  // Minor lines divide major axis tick intervals, including partial edge intervals.
+  function minorTicks(lo, hi, divisions) {
+    const major = ticks(lo, hi);
+    if (divisions <= 1 || major.length < 2) return [];
+    const step = major[1] - major[0], result = [];
+    for (let base = major[0] - step; base < hi; base += step) {
+      for (let i = 1; i < divisions; i++) {
+        const value = base + step * i / divisions;
+        if (value > lo && value < hi) result.push(value);
+      }
+    }
+    return result;
+  }
   function graph(c, o, bg) {
     const left = o.x + 58,
       top = o.y + 70,
@@ -144,24 +157,45 @@ const TutorMath = (() => {
     c.strokeStyle = bg === 'white' ? '#dce2ec' : '#ffffff40';
     c.lineWidth = 1;
     c.strokeRect(left, top, w, h);
+    const gridOpacity = o.gridOpacity ?? 0.35;
+    const gridInk = bg === 'white' ? '#64748b' : '#ffffff';
+    c.save();
+    c.globalAlpha *= gridOpacity * 0.45;
+    c.strokeStyle = gridInk;
+    c.lineWidth = 0.7;
+    c.beginPath();
+    for (const x of minorTicks(o.xmin, o.xmax, o.gridSubdivisionsX ?? 1)) {
+      c.moveTo(X(x), top); c.lineTo(X(x), top + h);
+    }
+    for (const y of minorTicks(o.ymin, o.ymax, o.gridSubdivisionsY ?? 1)) {
+      c.moveTo(left, Y(y)); c.lineTo(left + w, Y(y));
+    }
+    c.stroke();
+    c.restore();
     c.font = '17px "Segoe UI",Arial';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     for (const x of ticks(o.xmin, o.xmax)) {
-      c.strokeStyle = bg === 'white' ? '#e6ebf3' : '#ffffff18';
+      c.save();
+      c.globalAlpha *= gridOpacity;
+      c.strokeStyle = gridInk;
       c.beginPath();
       c.moveTo(X(x), top);
       c.lineTo(X(x), top + h);
       c.stroke();
+      c.restore();
       c.fillStyle = ink;
       c.fillText(String(x), X(x), top + h + 20);
     }
     for (const y of ticks(o.ymin, o.ymax)) {
-      c.strokeStyle = bg === 'white' ? '#e6ebf3' : '#ffffff18';
+      c.save();
+      c.globalAlpha *= gridOpacity;
+      c.strokeStyle = gridInk;
       c.beginPath();
       c.moveTo(left, Y(y));
       c.lineTo(left + w, Y(y));
       c.stroke();
+      c.restore();
       c.fillStyle = ink;
       c.textAlign = 'right';
       c.fillText(String(y), left - 9, Y(y));
@@ -366,6 +400,8 @@ const TutorMath = (() => {
         typeof o.labels === 'boolean'
       );
     if (o.type === 'graph') {
+      if (['gridSubdivisionsX', 'gridSubdivisionsY'].some(key => o[key] !== undefined && (!Number.isInteger(o[key]) || o[key] < 1 || o[key] > 20)) ||
+          (o.gridOpacity !== undefined && (!Number.isFinite(o.gridOpacity) || o.gridOpacity < 0 || o.gridOpacity > 1))) return false;
       if (
         ![o.xmin, o.xmax, o.ymin, o.ymax].every(Number.isFinite) ||
         o.xmax - o.xmin < 0.01 ||
@@ -388,5 +424,5 @@ const TutorMath = (() => {
     }
     return false;
   }
-  return { compile, ticks, graph, geometry, valid };
+  return { compile, ticks, minorTicks, graph, geometry, valid };
 })();

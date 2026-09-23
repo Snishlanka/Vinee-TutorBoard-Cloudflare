@@ -273,6 +273,12 @@
             <span>&#9651;</span>Triangle
           </button>
         </div>
+        <div id="graph-grid-options" hidden><h3>GRAPH COLORS</h3><div id="graph-curve-colors"></div><p class="math-help">Click a graph to magnify a point; drag to move it. Escape closes the lens.</p><h3>GRAPH GRID</h3><div class="ranges">
+ <label>X-axis subdivisions<input id="selected-grid-subdivisions-x" type="number" min="1" max="20" step="1" value="1" required /></label>
+ <label>Y-axis subdivisions<input id="selected-grid-subdivisions-y" type="number" min="1" max="20" step="1" value="1" required /></label>
+ </div>
+ <label>Grid opacity <output id="selected-grid-opacity-value">35%</output><input id="selected-grid-opacity" type="range" min="0" max="100" value="35" /></label>
+ <p class="math-help">Divide each major axis tick interval into 5 or 10 small intervals (1 = no subdivisions). X and Y follow their own axis scales. Opacity affects grid lines, not axes or curves.</p></div>
         <div id="object-options" hidden>
           <div class="section-head" id="object-heading">SELECTED OBJECT</div>
           <div id="geometry-edit" hidden>
@@ -434,6 +440,12 @@ x^2</textarea>
           ><label>y minimum<input id="ymin" type="number" value="-10" step="any" required /></label
           ><label>y maximum<input id="ymax" type="number" value="10" step="any" required /></label>
         </div>
+<div class="ranges">
+ <label>X-axis subdivisions<input id="graph-grid-subdivisions-x" type="number" min="1" max="20" step="1" value="1" required /></label>
+ <label>Y-axis subdivisions<input id="graph-grid-subdivisions-y" type="number" min="1" max="20" step="1" value="1" required /></label>
+ </div>
+ <label>Grid opacity <output id="graph-grid-opacity-value">35%</output><input id="graph-grid-opacity" type="range" min="0" max="100" value="35" /></label>
+ <p class="math-help">Divide each major axis tick interval into 5 or 10 small intervals (1 = no subdivisions). X and Y follow their own axis scales. Opacity affects grid lines, not axes or curves.</p>
         <p class="math-help">
           Leave functions empty to insert only a coordinate grid. Axes appear when zero is inside
           the selected range.
@@ -569,6 +581,7 @@ x^2</textarea>
       <button id="keep-storage">Keep drafts on this device</button>
       <div class="modal-actions"><button id="install-close" class="primary">Got it</button></div>
     </dialog>
+  <div id="graph-lens" hidden aria-label="Graph magnifier"><canvas id="graph-lens-canvas" width="600" height="600"></canvas><button id="graph-lens-close" aria-label="Close graph magnifier">&#215;</button><output id="graph-lens-point"></output></div>
     <script src="vendor/pdf-lib.min.js"></script>
     <script src="math.js"></script>
     <script src="app.js"></script>

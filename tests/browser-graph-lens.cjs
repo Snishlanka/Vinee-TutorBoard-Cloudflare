@@ -1,0 +1,65 @@
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+(async()=>{
+ const b=await chromium.launch({channel:'msedge',headless:true});
+ try{
+  const p=await b.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
+  await p.goto('http://127.0.0.1:8765');await p.waitForFunction(()=>window.TutorBoard);
+  await p.evaluate(()=>openMath('graph'));
+  await p.locator('#graph-grid-subdivisions-x').fill('5');
+  await p.locator('#graph-grid-subdivisions-y').fill('10');
+  await p.locator('#graph-grid-opacity').fill('60');
+  await p.locator('#functions').fill('x^2\nx');
+  await p.locator('#graph-form button[type=submit]').click();
+  assert.ok(await p.evaluate(()=>selected.type==='graph'&&selected.gridSubdivisionsX===5&&selected.gridSubdivisionsY===10&&selected.gridOpacity===.6));
+  await p.evaluate(()=>{document.body.classList.remove('tools-hidden');syncPanels();});
+  await p.locator('#selected-grid-subdivisions-x').fill('10');
+  await p.locator('#selected-grid-subdivisions-x').press('Tab');
+  await p.locator('#selected-grid-opacity').fill('0');
+  await p.locator('#selected-grid-opacity').dispatchEvent('change');
+  assert.ok(await p.evaluate(()=>selected.gridOpacity===0&&selected.gridSubdivisionsX===10&&validObject(JSON.parse(JSON.stringify(selected)))));
+  await p.locator('#undo').click();
+  assert.equal(await p.evaluate(()=>page().objects[0].gridOpacity),.6);
+  await p.locator('#redo').click();
+  assert.equal(await p.evaluate(()=>page().objects[0].gridOpacity),0);
+  await p.evaluate(()=>{ selected=page().objects[0];syncSelection(); });
+  const picker=p.locator('#graph-curve-colors input').first();
+  await picker.fill('#ff0000');await picker.dispatchEvent('change');
+  assert.equal(await p.evaluate(()=>page().objects[0].curves[0].color),'#ff0000');
+  await p.locator('#undo').click();
+  assert.notEqual(await p.evaluate(()=>page().objects[0].curves[0].color),'#ff0000');
+  await p.locator('#redo').click();
+  const target=await p.evaluate(()=>{
+   const g=page().objects[0],r=canvas.getBoundingClientRect();
+   return {x:r.left+(g.x+58+(g.w-84)/2)*r.width/W,y:r.top+(g.y+70+(g.h-114)/2)*r.height/H};
+  });
+  await p.mouse.move(target.x,target.y);
+  assert.equal(await p.locator('#board').evaluate(c=>c.style.cursor),'zoom-in');
+  await p.mouse.click(target.x,target.y);
+  assert.equal(await p.locator('#graph-lens').isVisible(),true);
+  assert.match(await p.locator('#graph-lens-point').textContent(),/x = 0, y = 0/);
+  const lensTarget=await p.evaluate(()=>{
+    const s=graphLensState,g=s.graph,r=$('graph-lens-canvas').getBoundingClientRect();
+    const bx=g.x+58+(0.5-g.xmin)/(g.xmax-g.xmin)*(g.w-84);
+    const by=g.y+70+(g.ymax-0.25)/(g.ymax-g.ymin)*(g.h-114);
+    return {x:r.left+3+(300+(bx-s.center.x)*s.sx)/600*(r.width-6),y:r.top+3+(300+(by-s.center.y)*s.sy)/600*(r.height-6)};
+  });
+  const before=await p.evaluate(()=>JSON.stringify(page().objects));
+  await p.mouse.move(lensTarget.x,lensTarget.y);
+  await p.mouse.click(lensTarget.x,lensTarget.y);
+  assert.ok(await p.evaluate(()=>Math.abs(graphLensState.pinned.x-.5)<.01&&Math.abs(graphLensState.pinned.y-.25)<.01));
+  assert.match(await p.locator('#graph-lens-point').textContent(),/Selected: On curve/);
+  assert.equal(await p.evaluate(()=>JSON.stringify(page().objects)),before);
+  await p.keyboard.press('Escape');
+  assert.equal(await p.locator('#graph-lens').isVisible(),false);
+  await p.mouse.move(target.x,target.y);await p.mouse.down();await p.mouse.move(target.x+30,target.y+20);await p.mouse.up();
+  assert.equal(await p.locator('#graph-lens').isVisible(),false);
+  const margin=await p.evaluate(()=>{const g=page().objects[0],r=canvas.getBoundingClientRect();return {x:r.left+(g.x+10)*r.width/W,y:r.top+(g.y+10)*r.height/H};});
+  await p.mouse.move(margin.x,margin.y);
+  assert.equal(await p.locator('#board').evaluate(c=>c.style.cursor),'grab');
+  await p.mouse.click(margin.x,margin.y);
+  assert.equal(await p.locator('#graph-lens').isVisible(),false);
+  assert.deepEqual(errors,[]);
+  console.log('Graph curve colors, undo/redo, lens cursor, circular zoom, coordinates, dismissal and dragging passed.');
+ }finally{await b.close();}
+})().catch(e=>{console.error(e);process.exitCode=1});

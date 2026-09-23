@@ -1865,6 +1865,9 @@ function insertGraph(axesOnly = false) {
       ymin,
       ymax,
       curves,
+      gridSubdivisionsX: Number($('graph-grid-subdivisions-x').value),
+      gridSubdivisionsY: Number($('graph-grid-subdivisions-y').value),
+      gridOpacity: Number($('graph-grid-opacity').value) / 100,
       color,
       width,
     };
@@ -1882,6 +1885,28 @@ $('graph-form').onsubmit = (e) => {
   insertGraph();
 };
 $('axes-only').onclick = () => insertGraph(true);
+$('graph-grid-opacity').oninput = () => {
+  $('graph-grid-opacity-value').textContent = $('graph-grid-opacity').value + '%';
+};
+for (const [id, property, divisor] of [
+  ['selected-grid-subdivisions-x', 'gridSubdivisionsX', 1],
+  ['selected-grid-subdivisions-y', 'gridSubdivisionsY', 1],
+  ['selected-grid-opacity', 'gridOpacity', 100],
+]) {
+  $(id).onchange = () => {
+    if (selected?.type !== 'graph' || !page().objects.includes(selected)) return;
+    const value = Number($(id).value) / divisor;
+    if (!TutorMath.valid({ ...selected, [property]: value })) { syncSelection(); return; }
+    if ((selected[property] ?? (property === 'gridOpacity' ? 0.35 : 1)) === value) return;
+    checkpoint();
+    selected[property] = value;
+    syncSelection(); render(); thumbnails();
+  };
+}
+$('selected-grid-opacity').oninput = () => {
+  $('selected-grid-opacity-value').textContent = $('selected-grid-opacity').value + '%';
+};
+
 $('geometry-kind').onchange = () => {
   $('sides-label').hidden = $('geometry-kind').value !== 'polygon';
   $('angle-label').hidden = $('geometry-kind').value !== 'angle';
@@ -1977,6 +2002,15 @@ function parseNames(value) {
 }
 function syncSelection() {
   syncTextControls();
+  const graphSelected = selected?.type === 'graph' && page().objects.includes(selected) && tool !== 'eraser';
+  $('graph-grid-options').hidden = !graphSelected;
+  if (graphSelected) {
+    syncGraphCurveColors();
+    $('selected-grid-subdivisions-x').value = selected.gridSubdivisionsX ?? 1;
+    $('selected-grid-subdivisions-y').value = selected.gridSubdivisionsY ?? 1;
+    $('selected-grid-opacity').value = Math.round((selected.gridOpacity ?? 0.35) * 100);
+    $('selected-grid-opacity-value').textContent = $('selected-grid-opacity').value + '%';
+  }
   $('copy-object').disabled =
     tool === 'eraser' || !page().objects.includes(selected) || !isEditableShape(selected);
   $('paste-object').disabled = !shapeClipboard;
@@ -2057,10 +2091,11 @@ function updateHoverCursor(p, forceDraw = false) {
     return;
   }
   const handle = selected && controlAt(selected, p);
+  const hovered = [...page().objects].reverse().find((o) => hit(o, p));
   canvas.style.cursor = handle
     ? controlCursor(handle, selected)
-    : page().objects.some((o) => hit(o, p))
-      ? 'grab'
+    : hovered
+      ? hovered.type === 'graph' && insideGraphPlot(hovered, p) ? 'zoom-in' : 'grab'
       : toolCursor(tool);
 }
 function selectionHandles(o) {
@@ -2716,3 +2751,144 @@ $('theme-toggle').onclick = () => {
     localStorage.setItem('tutorboard-theme', theme);
   } catch {}
 };
+
+// Graph inspection is a display-only overlay; it never enters lesson exports.
+function syncGraphCurveColors() {
+  const list = $('graph-curve-colors');
+  list.replaceChildren();
+  const graph = selected;
+  for (const [i, curve] of graph.curves.entries()) {
+    const label = document.createElement('label');
+    label.textContent = 'y = ' + curve.expression;
+    const input = document.createElement('input');
+    input.type = 'color'; input.value = curve.color;
+    input.setAttribute('aria-label', 'Color for y = ' + curve.expression);
+    input.onchange = () => {
+      if (!page().objects.includes(graph) || graph.curves[i].color === input.value) return;
+      checkpoint(); graph.curves[i].color = input.value; render(); thumbnails();
+    };
+    label.append(input); list.append(label);
+  }
+  if (!graph.curves.length) list.textContent = 'Axes-only graph: no curves to recolor.';
+}
+let graphLensState = null;
+function insideGraphPlot(g, p) {
+  return p.x >= g.x + 58 && p.x <= g.x + g.w - 26 && p.y >= g.y + 70 && p.y <= g.y + g.h - 44;
+}
+function hideGraphLens() { $('graph-lens').hidden = true; graphLensState = null; }
+function showGraphLens(graph, p, event) {
+  const lens = $('graph-lens'), surface = $('graph-lens-canvas');
+  const size = Math.min(260, window.innerWidth - 16, window.innerHeight - 16);
+  lens.style.width = lens.style.height = size + 'px';
+  lens.style.left = Math.max(8, Math.min(window.innerWidth - size - 8, event.clientX - size / 2)) + 'px';
+  lens.style.top = Math.max(8, Math.min(window.innerHeight - size - 8, event.clientY - size / 2)) + 'px';
+  const r = canvas.getBoundingClientRect(), c = surface.getContext('2d');
+  c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,600,600);
+  c.save();
+  c.translate(300,300);
+  c.scale(3 * r.width / W * 600 / size, 3 * r.height / H * 600 / size);
+  c.translate(-p.x,-p.y);
+  drawPaper(c, page().background, page().boardColor);
+  drawObject(c, graph);
+  c.restore();
+  graphLensState = { graph, center: p,
+    sx: 3 * r.width / W * 600 / size, sy: 3 * r.height / H * 600 / size,
+    image: c.getImageData(0,0,600,600), pinned: null };
+  paintGraphLens(lensPointAt(300,300));
+  lens.hidden = false;
+  canvas.tabIndex = -1;
+  canvas.focus({ preventScroll: true });
+}
+let graphLensPress = null;
+canvas.addEventListener('pointerdown', e => {
+  hideGraphLens();
+  graphLensPress = null;
+  if (e.button !== 0 || e.altKey || tool === 'eraser' || !acceptsPointer(e) || activePointer) return;
+  const p = point(e), graph = [...page().objects].reverse().find(o => hit(o,p));
+  if (graph?.type === 'graph' && insideGraphPlot(graph, p)) graphLensPress = {id:e.pointerId,graph,x:e.clientX,y:e.clientY};
+}, true);
+canvas.addEventListener('pointerup', e => {
+  const press = graphLensPress;
+  if (!press || e.pointerId !== press.id) return;
+  graphLensPress = null;
+  if (Math.hypot(e.clientX-press.x,e.clientY-press.y) <= 4 && page().objects.includes(press.graph))
+    showGraphLens(press.graph,point(e),e);
+});
+canvas.addEventListener('pointercancel', () => {graphLensPress = null;});
+$('graph-lens-close').onclick = hideGraphLens;
+document.addEventListener('keydown', e => {if(e.key === 'Escape') hideGraphLens();});
+document.addEventListener('pointerdown', e => {if(e.target !== canvas && !e.target.closest('#graph-lens')) hideGraphLens();},true);
+window.addEventListener('resize',hideGraphLens);
+boardStage.addEventListener('scroll',hideGraphLens);
+
+function lensPointAt(px, py) {
+  const state = graphLensState, g = state.graph;
+  const bx = state.center.x + (px-300)/state.sx;
+  const by = state.center.y + (py-300)/state.sy;
+  let x = g.xmin + (bx-g.x-58)/(g.w-84)*(g.xmax-g.xmin);
+  let y = g.ymax - (by-g.y-70)/(g.h-114)*(g.ymax-g.ymin);
+  if (x<g.xmin || x>g.xmax || y<g.ymin || y>g.ymax) return null;
+  const kx=(g.w-84)/(g.xmax-g.xmin)*state.sx;
+  const ky=(g.h-114)/(g.ymax-g.ymin)*state.sy;
+  const threshold=24; // About ten CSS pixels inside the lens.
+  let best=null, distance=threshold;
+  const consider=(cx,cy,label)=>{
+    if (!Number.isFinite(cx)||!Number.isFinite(cy)||cx<g.xmin||cx>g.xmax||cy<g.ymin||cy>g.ymax) return;
+    const d=Math.hypot((cx-x)*kx,(cy-y)*ky);
+    if(d<distance){distance=d;best={x:cx,y:cy,label};}
+  };
+  // Prioritize nearby intercepts; roots are numerically refined and checked.
+  for(const curve of g.curves) {
+    let f; try {f=TutorMath.compile(curve.expression);} catch {continue;}
+    consider(0,f(0),'Y-intercept');
+    let root=x;
+    for(let i=0;i<20;i++) {
+      const value=f(root), h=Math.max(1e-7,Math.abs(root)*1e-7);
+      const derivative=(f(root+h)-f(root-h))/(2*h);
+      if(!Number.isFinite(value)||!Number.isFinite(derivative)||Math.abs(derivative)<1e-12) break;
+      root-=value/derivative;
+    }
+    if(Math.abs(root)<1e-10 && f(0)===0) root=0;
+    if(Math.abs(f(root))<1e-9) consider(root,0,'X-intercept (numeric)');
+  }
+  if(!best) {
+    for(const curve of g.curves) {
+      try {consider(x,TutorMath.compile(curve.expression)(x),'On curve');} catch {}
+    }
+    if(!best) {consider(0,y,'On Y-axis');consider(x,0,'On X-axis');}
+  }
+  return best || {x,y,label:'Pointer'};
+}
+function paintGraphLens(point) {
+  const state=graphLensState; if(!state) return;
+  const c=$('graph-lens-canvas').getContext('2d'),g=state.graph;
+  c.putImageData(state.image,0,0);
+  const marker=(p,color)=>{
+    if(!p)return;
+    const bx=g.x+58+(p.x-g.xmin)/(g.xmax-g.xmin)*(g.w-84);
+    const by=g.y+70+(g.ymax-p.y)/(g.ymax-g.ymin)*(g.h-114);
+    const x=300+(bx-state.center.x)*state.sx,y=300+(by-state.center.y)*state.sy;
+    c.strokeStyle=color;c.lineWidth=2;c.beginPath();
+    c.moveTo(x-16,y);c.lineTo(x+16,y);c.moveTo(x,y-16);c.lineTo(x,y+16);c.stroke();
+    c.beginPath();c.arc(x,y,6,0,Math.PI*2);c.stroke();
+  };
+  marker(state.pinned,'#16834a'); marker(point,'#ef4444');
+  const value=point||state.pinned;
+  const format=n=>Number(n.toPrecision(9)).toString();
+  $('graph-lens-point').textContent=value
+    ? `${value===state.pinned?'Selected: ':''}${value.label} | x = ${format(value.x)}, y = ${format(value.y)}`
+    : 'Move inside the grid and click a point';
+}
+function graphLensPointer(e) {
+  if(!graphLensState || !acceptsPointer(e)) return;
+  const r=$('graph-lens-canvas').getBoundingClientRect();
+  const x=(e.clientX-r.left-3)/(r.width-6)*600;
+  const y=(e.clientY-r.top-3)/(r.height-6)*600;
+  if(Math.hypot(x-300,y-300)>300)return;
+  const p=lensPointAt(x,y);
+  if(e.type==='pointerdown') {e.preventDefault();graphLensState.pinned=p;}
+  paintGraphLens(p);
+}
+$('graph-lens-canvas').onpointermove=graphLensPointer;
+$('graph-lens-canvas').onpointerdown=graphLensPointer;
+$('graph-lens-canvas').onpointerleave=()=>paintGraphLens(null);
