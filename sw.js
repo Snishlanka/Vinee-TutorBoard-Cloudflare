@@ -1,7 +1,7 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = '20260923-laser-pointer';
+const REVISION = '20260930-seo-landing';
 const ASSETS = [
-  'index.html',
+  'whiteboard.html',
   'theme.js',
   'style.css',
   'app.js',
@@ -25,10 +25,8 @@ const PREFIX = 'vinee-shell:' + BASE + ':';
 const CACHE = PREFIX + REVISION;
 // Cloudflare redirects index.html to the directory URL. Cache that URL directly:
 // redirected responses cannot satisfy navigation requests with redirect='manual'.
-const HOME = new URL('index.html', BASE).href;
-const urls = new Set(
-  ASSETS.map((asset) => (asset === 'index.html' ? BASE : new URL(asset, BASE).href))
-);
+const HOME = new URL('whiteboard.html', BASE).href;
+const urls = new Set(ASSETS.map((asset) => new URL(asset, BASE).href));
 function navigationResponse(response, request) {
   if (request.mode !== 'navigate' || !response.redirected) return response;
   return new Response(response.body, {
@@ -68,7 +66,7 @@ self.addEventListener('fetch', (event) => {
   url.search = '';
   url.hash = '';
   let key = url.href;
-  if (request.mode === 'navigate' && (key === BASE || key === HOME)) key = BASE;
+  if (request.mode === 'navigate' && key === HOME) key = HOME;
   if (!urls.has(key)) return; // No HTML fallback for missing assets or other apps.
   event.respondWith(
     (async () => {

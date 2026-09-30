@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
     const p = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
     const errors = [];
     p.on('pageerror', e => errors.push(e.message));
-    await p.goto(process.env.BOARD_URL || 'http://127.0.0.1:8765');
+    await p.goto(process.env.BOARD_URL || 'http://127.0.0.1:8765/whiteboard.html');
     await p.waitForFunction(() => window.TutorBoard);
     for (const kind of ['pen', 'rect', 'line']) {
       await p.evaluate(kind => { page().objects = []; selected = null; setTool(kind); render(); }, kind);

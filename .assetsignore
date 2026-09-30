@@ -1,6 +1,10 @@
 # Publish only application assets.
 *
 !index.html
+!whiteboard.html
+!landing.css
+!robots.txt
+!sitemap.xml
 !app.js
 !board-persistence.js
 !draft-store.js

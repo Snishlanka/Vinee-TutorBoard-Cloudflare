@@ -479,7 +479,17 @@ function update() {
 }
 // Functional cursor icons use a small SVG with a precise drawing hotspot.
 function toolCursor(t) {
-  if (t === 'laser') return 'crosshair';
+  if (t === 'laser') {
+    const laser =
+      '<circle cx="16" cy="16" r="8" fill="#ffffff" fill-opacity=".9"/>' +
+      '<circle cx="16" cy="16" r="6.5" fill="#ff253e" stroke="#7f1020" stroke-width="1.5"/>' +
+      '<circle cx="16" cy="16" r="3" fill="#ffffff" fill-opacity=".75"/>';
+    const laserSvg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+      laser +
+      '</svg>';
+    return 'url("data:image/svg+xml,' + encodeURIComponent(laserSvg) + '") 16 16, crosshair';
+  }
   if (t === 'move') return 'grab';
   if (t === 'text') return 'text';
   if (t !== 'pen' && t !== 'eraser') return 'crosshair';

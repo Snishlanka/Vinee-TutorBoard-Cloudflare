@@ -46,21 +46,21 @@ async function navigate(w, url) {
   });
   return result;
 }
-test('installation caches canonical homepage without index.html redirect', async () => {
+test('installation caches the whiteboard application route', async () => {
   for (const scope of [base, base + 'app/']) {
     const w = worker({ scope });
     let installed;
     w.handlers.install({ waitUntil: (value) => (installed = value) });
     await installed;
-    assert.ok(w.added.includes(scope));
-    assert.ok(!w.added.includes(scope + 'index.html'));
+    assert.ok(w.added.includes(scope + 'whiteboard.html'));
+    assert.ok(!w.added.includes(scope));
   }
 });
-test('reopening homepage, query URL, and index.html works from cache offline', async () => {
-  for (const path of ['', '?return=1', 'index.html']) {
+test('reopening whiteboard route and its query URL works from cache offline', async () => {
+  for (const path of ['whiteboard.html', 'whiteboard.html?return=1']) {
     const w = worker({ cached: new Response('cached lesson app') });
     assert.equal(await (await navigate(w, base + path)).text(), 'cached lesson app');
-    assert.deepEqual(w.lookups, [base]);
+    assert.deepEqual(w.lookups, [base + 'whiteboard.html']);
     assert.equal(w.network.length, 0);
   }
 });
@@ -69,7 +69,7 @@ test('redirected cached HTML becomes a navigation-safe response', async () => {
     headers: { 'Content-Type': 'text/html', 'Content-Security-Policy': "default-src 'self'" },
   });
   Object.defineProperty(cached, 'redirected', { value: true });
-  const response = await navigate(worker({ cached }), base);
+  const response = await navigate(worker({ cached }), base + 'whiteboard.html');
   assert.equal(response.redirected, false);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('Content-Type'), 'text/html');
@@ -79,8 +79,8 @@ test('redirected cached HTML becomes a navigation-safe response', async () => {
 test('missing cache or unavailable storage falls back to network', async () => {
   for (const options of [{}, { storageError: true }]) {
     const w = worker(options);
-    assert.equal(await (await navigate(w, base)).text(), 'network');
-    assert.deepEqual(w.network, [base]);
+    assert.equal(await (await navigate(w, base + 'whiteboard.html')).text(), 'network');
+    assert.deepEqual(w.network, [base + 'whiteboard.html']);
   }
 });
 test('unknown paths are not replaced by the cached homepage', async () => {

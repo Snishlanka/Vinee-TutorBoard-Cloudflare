@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
  const browser = await chromium.launch({channel:'msedge',headless:true});
  try {
   const p = await browser.newPage();
-  await p.goto('http://127.0.0.1:8765');
+  await p.goto('http://127.0.0.1:8765/whiteboard.html');
   await p.waitForFunction(() => window.TutorBoard);
   for (const [width,height] of [[1366,768],[1920,1080],[1536,864],[1024,768],[800,1100]]) {
    await p.setViewportSize({width,height});

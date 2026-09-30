@@ -12,7 +12,7 @@ const fs = require('node:fs/promises');
     const p = await context.newPage(),
       errors = [];
     p.on('pageerror', (e) => errors.push(e.message));
-    await p.goto(process.env.BOARD_URL || 'http://127.0.0.1:8765');
+    await p.goto(process.env.BOARD_URL || 'http://127.0.0.1:8765/whiteboard.html');
     await p.waitForFunction(() => window.TutorBoard);
     async function moveTo(point) {
       const b = await p.locator('#board').boundingBox();

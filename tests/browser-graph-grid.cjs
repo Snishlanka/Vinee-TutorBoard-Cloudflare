@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
  const b=await chromium.launch({channel:'msedge',headless:true});
  try{
   const p=await b.newPage();const errors=[];p.on('pageerror',e=>errors.push(e.message));
-  await p.goto('http://127.0.0.1:8765');await p.waitForFunction(()=>window.TutorBoard);
+  await p.goto('http://127.0.0.1:8765/whiteboard.html');await p.waitForFunction(()=>window.TutorBoard);
   await p.evaluate(()=>openMath('graph'));
   await p.locator('#graph-grid-step-x').fill('1');
   await p.locator('#graph-grid-step-y').fill('0.5');

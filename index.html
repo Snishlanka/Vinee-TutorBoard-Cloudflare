@@ -1,598 +1,70 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-    <meta name="theme-color" content="#16834a" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="TutorBoard" />
-    <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
-    <title>Vinee TutorBoard — Your teaching whiteboard</title>
-    <meta
-      name="description"
-      content="Write, draw and explain lessons on your own teaching whiteboard."
-    />
-    <link rel="icon" href="favicon.svg" />
-    <script src="theme.js"></script>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="pwa.css" />
-  </head>
-  <body class="pages-hidden">
-    <header>
-      <div class="brand"><span class="mark">V</span><strong>Vinee TutorBoard</strong></div>
-      <div class="lesson-details">
-        <input id="title" aria-label="Lesson title" value="Untitled lesson" maxlength="100" />
-        <input id="tutor-name" aria-label="Tutor name" placeholder="Tutor name" maxlength="100" />
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vinee TutorBoard | Digital Whiteboard for Math Teaching</title>
+  <meta name="description" content="Teach mathematics and other lessons with a free digital whiteboard featuring chalk, graphs, geometry diagrams, offline access, autosave and PDF export.">
+  <link rel="canonical" href="https://vinee-tutorboard.snishlanka.workers.dev/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Vinee TutorBoard">
+  <meta property="og:title" content="Vinee TutorBoard | Digital Whiteboard for Math Teaching">
+  <meta property="og:description" content="Teach mathematics and other lessons with chalk tools, graphs, geometry diagrams, offline access, autosave and PDF export.">
+  <meta property="og:url" content="https://vinee-tutorboard.snishlanka.workers.dev/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Vinee TutorBoard | Digital Whiteboard for Math Teaching">
+  <meta name="twitter:description" content="A browser-based teaching whiteboard with math tools, lesson pages and PDF export.">
+  <meta name="theme-color" content="#16834a">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="landing.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Vinee TutorBoard","url":"https://vinee-tutorboard.snishlanka.workers.dev/","applicationCategory":"EducationalApplication","operatingSystem":"Web browser","description":"A browser-based digital whiteboard for teaching mathematics and other lessons, with drawing tools, graphs, geometry diagrams, offline access, local autosave and lesson exports.","featureList":["Chalk, highlighter, laser pointer and two eraser modes","Graphs and coordinate axes","Resizable and rotatable geometry diagrams","Image import and annotation","Multiple lesson pages","Local draft autosave and editable lesson files","PNG page export and PDF lesson export","Installable offline web app"]}</script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Vinee TutorBoard home"><span class="mark" aria-hidden="true">V</span><span>Vinee TutorBoard</span></a>
+    <nav aria-label="Main navigation"><a href="#features">Features</a><a href="#how-it-works">How it works</a><a class="button button-small" href="whiteboard.html">Open Whiteboard</a></nav>
+  </header>
+  <main id="main-content">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">A DIGITAL BOARD FOR CLEARER LESSONS</p>
+        <h1>Teach, draw and explain on one digital whiteboard</h1>
+        <p class="lead">Vinee TutorBoard gives tutors a focused space to write with chalk, work through mathematics, annotate exam questions and organise a lesson across multiple pages.</p>
+        <div class="hero-actions"><a class="button" href="whiteboard.html">Open Whiteboard</a><a class="text-link" href="#features">Explore the tools</a></div>
+        <p class="note">Runs in your browser, can be installed for offline use, and requires no account to start drawing.</p>
       </div>
-      <div class="top-actions">
-        <button id="theme-toggle" aria-pressed="false" title="Switch to dark theme">
-          Dark theme</button
-        ><button id="open">Open lesson</button><button id="save">Save lesson</button
-        ><button id="export-pdf">Export lesson PDF</button
-        ><button id="export" class="primary">Export page ↗</button
-        ><button id="fullscreen" title="Use your whole screen">Full screen ⛶</button
-        ><button id="focus" title="Hide side panels for screen sharing">Present ⛶</button>
+      <div class="board-preview" aria-label="Illustration of a mathematics lesson on Vinee TutorBoard">
+        <div class="preview-top"><span class="preview-logo">V</span><span>Mathematics lesson</span><span class="preview-page">Page 1</span></div>
+        <div class="preview-board"><p>y = x²</p><div class="axes" aria-hidden="true"><span class="curve"></span></div><div class="triangle" aria-hidden="true"><span>P</span><span>Q</span><span>R</span></div></div>
+        <div class="preview-tools" aria-hidden="true"><span>Chalk</span><span>Graph</span><span>Geometry</span><span>PDF</span></div>
       </div>
-    </header>
-    <nav class="workspace-controls" aria-label="Board controls">
-      <div class="panel-controls">
-        <button id="previous-page" aria-label="Previous page">&#8592;</button
-        ><span id="page-position">1 / 1</span
-        ><button id="next-page" aria-label="Next page">&#8594;</button
-        ><button id="quick-add">+ Page</button>
-      </div>
-      <div class="workspace-actions" role="group" aria-label="Edit lesson">
-        <button id="undo" title="Undo">↶ Undo</button>
-        <button id="redo" title="Redo">↷ Redo</button>
-        <button id="copy-object" title="Copy selected shape or line (Ctrl/Cmd+C)" disabled>
-          Copy
-        </button>
-        <button id="paste-object" title="Paste copied shape or line (Ctrl/Cmd+V)" disabled>
-          Paste
-        </button>
-        <button id="delete-object" title="Delete selected object (Delete)" disabled>Delete</button>
-        <button
-          id="image"
-          title="Insert an image file, or paste a copied screenshot onto the board with Ctrl+V / Cmd+V."
-        >
-          ＋ Insert image
-        </button>
-      </div>
-      <div id="text-options" hidden role="group" aria-label="Text formatting">
-        <button id="text-edit-selected" hidden>Edit text</button>
-        <label class="text-border-option"
-          ><input id="text-border" type="checkbox" checked /> Border</label
-        >
-        <label for="text-size">Text size</label
-        ><button id="text-smaller" aria-label="Decrease text size">A-</button
-        ><input
-          id="text-size"
-          type="number"
-          min="10"
-          max="120"
-          step="2"
-          value="28"
-          aria-label="Text size"
-        /><button id="text-larger" aria-label="Increase text size">A+</button
-        ><button id="text-bold" aria-pressed="false" title="Bold"><b>B</b></button
-        ><button id="text-underline" aria-pressed="false" title="Underline"><u>U</u></button>
-        <select id="text-list" aria-label="List style">
-          <option value="none">No list</option>
-          <option value="bullet">Bullets</option>
-          <option value="number">Numbering</option>
-        </select>
-        <select id="text-align" aria-label="Text alignment">
-          <option value="left">Left</option>
-          <option value="center">Center</option>
-          <option value="right">Right</option>
-        </select>
-        <select id="text-spacing" aria-label="Line spacing">
-          <option value="1">Single spacing</option>
-          <option value="1.35" selected>Normal spacing</option>
-          <option value="1.5">1.5 spacing</option>
-          <option value="2">Double spacing</option>
-        </select>
-      </div>
-    </nav>
-    <button
-      id="toggle-pages"
-      class="panel-edge-toggle panel-edge-left"
-      aria-controls="pages-panel"
-      aria-expanded="false"
-      aria-label="Show pages"
-      title="Show pages"
-    >
-      &#8250;
-    </button>
-    <button
-      id="toggle-tools"
-      class="panel-edge-toggle panel-edge-right"
-      aria-controls="tools-panel"
-      aria-expanded="true"
-      aria-label="Hide tools"
-      title="Hide tools"
-    >
-      &#8250;
-    </button>
-    <main>
-      <aside class="pages" id="pages-panel">
-        <div class="section-head">
-          <span>LESSON PAGES</span><button id="add" aria-label="Add page">＋</button>
-        </div>
-        <div class="page-order-controls" role="group" aria-label="Reorder current page">
-          <button id="move-page-earlier" title="Move the current page earlier in the lesson">
-            &#8593; Move earlier
-          </button>
-          <button id="move-page-later" title="Move the current page later in the lesson">
-            &#8595; Move later
-          </button>
-        </div>
-        <div id="page-list"></div>
-        <button id="add-bottom" class="new-page">＋ New page</button>
-        <div class="side-note">Your space to explain.<br />One step at a time.</div>
-      </aside>
-      <section class="workspace">
-        <div class="board-head" id="board-controls">
-          <div>
-            <span class="eyebrow">YOUR WHITEBOARD</span>
-            <h1 id="page-title">Page 1</h1>
-          </div>
-          <div class="board-toolbar" role="group" aria-label="Drawing tools">
-            <div class="quick-tools">
-              <button data-tool="pen" class="active" title="Chalk (P)"><span>✎</span></button>
-              <div id="eraser-picker">
-                <button
-                  id="eraser-toggle"
-                  data-tool="eraser"
-                  aria-expanded="false"
-                  aria-controls="eraser-menu"
-                  title="Eraser mode (E)"
-                >
-                  <span>&#129533;</span>&#9662;
-                </button>
-                <div id="eraser-menu" hidden role="group" aria-label="Eraser mode">
-                  <button data-eraser-mode="point" aria-pressed="true">Point eraser</button>
-                  <button data-eraser-mode="object" aria-pressed="false">Whole object</button>
-                  <label for="eraser-size">Size <span id="eraser-size-value">24 px</span></label>
-                  <input id="eraser-size" type="range" min="8" max="100" value="24" />
-                </div>
-              </div>
-              <button
-                data-tool="text"
-                title="Text box (T): drag to size, then type"
-                aria-label="Text box"
-              >
-                <span>T</span>
-              </button>
-              <div id="connector-picker">
-                <button
-                  id="connector-toggle"
-                  aria-expanded="false"
-                  aria-controls="connector-menu"
-                  title="Choose line or arrow"
-                >
-                  &#8599; &#9662;
-                </button>
-                <div id="connector-menu" hidden role="group" aria-label="Connector type">
-                  <button data-tool="line"><span>&#9585;</span>Line</button>
-                  <button data-tool="arrow"><span>&#8599;</span>Arrow</button>
-                </div>
-              </div>
-              <button data-tool="laser" title="Laser pointer (L): drag for a fading trail" aria-label="Laser pointer"><span style="color:#ef4444">&#9673;</span></button>
-              <button data-tool="move" title="Move an object (V)"><span>&#10021;</span></button>
-            </div>
-            <div class="ink-controls" role="group" aria-label="Ink color">
-              <div class="section-head"></div>
-              <div id="colors"></div>
-              <label class="custom-color"
-                >Custom
-                <input type="color" id="custom" value="#243653" aria-label="Custom ink color"
-              /></label>
-            </div>
-            <div class="stroke-controls" role="group" aria-label="Stroke width">
-              <label class="section-head" for="width"> <span id="width-value">3 px</span></label
-              ><input id="width" type="range" min="1" max="24" value="3" />
-              <div class="stroke-preview"><span id="stroke-dot"></span></div>
-            </div>
-          </div>
-          <div
-            class="paper-controls"
-            id="paper-controls"
-            role="group"
-            aria-label="Paper and board controls"
-          >
-            <div class="zoom-controls" role="group" aria-label="Board zoom">
-              <button id="zoom-out" aria-label="Zoom out">&#8722;</button
-              ><output id="zoom-level" aria-live="polite">Fit</output
-              ><button id="zoom-in" aria-label="Zoom in">+</button
-              ><button id="zoom-fit" aria-pressed="true">Fit to window</button>
-            </div>
-            <label for="board-color">Board</label
-            ><select id="board-color" aria-label="Board color">
-              <option value="white">White</option>
-              <option value="black">Black</option>
-              <option value="green">Green</option>
-              <option value="blue">Blue</option></select
-            ><label for="background">Paper</label
-            ><select id="background">
-              <option value="blank">Blank</option>
-              <option value="grid">Grid</option>
-              <option value="ruled">Ruled</option></select
-            ><button id="clear">Clear page</button>
-          </div>
-        </div>
-
-        <button
-          id="toggle-paper"
-          class="panel-edge-toggle paper-edge-toggle"
-          aria-controls="board-controls"
-          aria-expanded="true"
-          aria-label="Hide paper controls"
-          title="Hide paper controls"
-        >
-          &#9652;
-        </button>
-        <div class="board-stage">
-          <div class="board-wrap">
-            <canvas id="board" width="2880" height="1080" aria-label="Drawing whiteboard"></canvas>
-            <canvas id="laser-overlay" width="2880" height="1080" aria-hidden="true"></canvas>
-            <div id="empty-hint">
-              <span>Every great lesson starts here.</span
-              ><small>Pick up your chalk and make the first mark.</small>
-            </div>
-            <textarea
-              maxlength="10000"
-              id="text-editor"
-              placeholder="Type your Text…"
-              aria-label="Text to place on board"
-              hidden
-            ></textarea
-            ><button id="text-place" class="primary" hidden>Place text ✓</button>
-          </div>
-        </div>
-        <footer>
-          <span id="status">Chalk ready · Hold Shift for a straight line</span
-          ><span>Ctrl + Z undo <span class="divider">/</span> Ctrl + Shift + Z redo</span
-          ><span id="count">Page 1 of 1</span>
-        </footer>
-      </section>
-      <aside class="tools" id="tools-panel">
-        <div class="section-head">TOOLS</div>
-        <label for="input-mode">Drawing input</label>
-        <select id="input-mode" aria-describedby="input-hint">
-          <option value="auto">Auto detect</option>
-          <option value="pen">Pen only</option>
-          <option value="touch">Finger drawing</option>
-        </select>
-        <p id="input-hint" class="side-note">Touch drawing turns off when a stylus is detected</p>
-        <div class="tool-grid" id="tool-grid">
-          <button data-tool="highlighter" title="Highlighter (H)"><span>🖍</span>Highlight</button
-          ><button data-tool="rect" title="Rectangle"><span>□</span>Rectangle</button
-          ><button data-tool="circle" title="Ellipse"><span>○</span>Circle</button
-          ><button data-tool="triangle" id="triangle-tool" title="Draw triangle">
-            <span>&#9651;</span>Triangle
-          </button>
-        </div>
-        <div id="graph-grid-options" hidden><h3>GRAPH COLORS</h3><div id="graph-curve-colors"></div><p class="math-help">Click a graph to magnify a point; drag to move it. Escape closes the lens.</p><h3>GRAPH GRID</h3><div class="ranges">
- <label>X-axis interval<input id="selected-grid-step-x" type="number" min="0" step="any" placeholder="Auto (e.g. 1, 2, 0.5)" /></label>
- <label>Y-axis interval<input id="selected-grid-step-y" type="number" min="0" step="any" placeholder="Auto (e.g. 1, 2, 0.5)" /></label>
- <label>X-axis subdivisions<input id="selected-grid-subdivisions-x" type="number" min="1" max="20" step="1" value="5" required /></label>
- <label>Y-axis subdivisions<input id="selected-grid-subdivisions-y" type="number" min="1" max="20" step="1" value="5" required /></label>
- </div>
- <label>Grid opacity <output id="selected-grid-opacity-value">35%</output><input id="selected-grid-opacity" type="range" min="0" max="100" value="35" /></label>
- <p class="math-help">Leave axis intervals blank for Auto, or enter a positive step (up to 200 intervals per axis). Divide each major axis tick interval into 5 or 10 small intervals (1 = no subdivisions). X and Y follow their own axis scales. Opacity affects grid lines, not axes or curves.</p></div>
-        <div id="object-options" hidden>
-          <div class="section-head" id="object-heading">SELECTED OBJECT</div>
-          <div id="geometry-edit" hidden>
-            <label
-              >Rotation (degrees)<input id="object-rotation" type="number" value="0" step="1"
-            /></label>
-            <div class="history">
-              <button id="rotate-left">↶ 15°</button><button id="rotate-right">↷ 15°</button>
-            </div>
-            <label
-              >Diagram size<input
-                id="diagram-size"
-                type="number"
-                min="100"
-                max="900"
-                step="10" /></label
-            ><button id="apply-diagram-size">Resize diagram</button
-            ><label
-              >Point names<input id="object-names" placeholder="P, Q, R" maxlength="180" /></label
-            ><button id="apply-names">Apply names</button>
-          </div>
-          <div id="shape-edit" hidden>
-            <div id="shape-fill-options" hidden>
-              <label class="shape-fill-toggle"
-                ><input id="shape-fill-enabled" type="checkbox" /> Fill shape</label
-              >
-              <label for="shape-fill-pattern">Fill style</label>
-              <select id="shape-fill-pattern" disabled>
-                <option value="solid">Solid fill</option>
-                <option value="forward">/// Diagonal</option>
-                <option value="backward">&#92;&#92;&#92; Diagonal</option>
-              </select>
-              <label for="shape-fill-color">Fill color</label>
-              <input id="shape-fill-color" type="color" value="#facc15" disabled />
-              <p class="tip">Uncheck Fill shape for no fill.</p>
-            </div>
-            <label
-              >Rotation (degrees)<input id="shape-rotation" type="number" value="0" step="1"
-            /></label>
-            <div class="history">
-              <button id="shape-rotate-left">&#8630; 15&#176;</button
-              ><button id="shape-rotate-right">&#8631; 15&#176;</button>
-            </div>
-            <label
-              >Shape width<input id="shape-width" type="number" min="0" max="2880" step="1"
-            /></label>
-            <label
-              >Shape height<input id="shape-height" type="number" min="0" max="1080" step="1"
-            /></label>
-            <button id="apply-shape-size">Resize shape</button>
-            <p class="tip">
-              Drag corner handles to resize (Shift keeps proportions), the round handle to rotate,
-              and the gold handle to bend arrows, slant rectangles, or move the triangle top point.
-              Or enter width and height here.
-            </p>
-          </div>
-          <div id="image-edit" hidden>
-            <label
-              >Rotation (degrees)<input id="image-rotation" type="number" value="0" step="1"
-            /></label>
-            <div class="history">
-              <button id="image-rotate-left">↶ 15°</button
-              ><button id="image-rotate-right">↷ 15°</button>
-            </div>
-            <label
-              >Image width<input
-                id="image-width"
-                type="number"
-                min="40"
-                max="2880"
-                step="10" /></label
-            ><button id="apply-image-size">Resize image</button>
-            <p class="tip">Or drag the corner handle. Proportions stay the same.</p>
-          </div>
-        </div>
-        <div class="rule"></div>
-        <div class="section-head">MATHEMATICS</div>
-        <button id="graph-tools" class="insert">⌁ Graph & axes</button
-        ><button id="geometry-tools" class="insert">△ Geometry diagrams</button>
-        <div class="rule"></div>
-
-        <div class="tool-bottom">MADE FOR YOUR NEXT LESSON</div>
-      </aside>
-    </main>
-    <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" hidden /><input
-      id="lesson-file"
-      type="file"
-      accept=".json"
-      hidden
-    />
-    <div id="toast" role="status"></div>
-    <dialog id="pdf-error-dialog" aria-labelledby="pdf-error-title">
-      <h2 id="pdf-error-title">PDF export failed</h2>
-      <p id="pdf-error-message"></p>
-      <div class="modal-actions"><button id="pdf-error-close">Close</button></div>
-    </dialog>
-    <dialog
-      id="delete-page-dialog"
-      role="alertdialog"
-      aria-labelledby="delete-page-heading"
-      aria-describedby="delete-page-description"
-    >
-      <h2 id="delete-page-heading">Delete page?</h2>
-      <p id="delete-page-description" class="math-help">
-        This removes the page and everything on it from your lesson.
-      </p>
-      <div class="modal-actions">
-        <button id="delete-page-cancel">Cancel</button
-        ><button id="delete-page-confirm" class="primary">Delete page</button>
-      </div>
-    </dialog>
-    <dialog
-      id="clear-dialog"
-      role="alertdialog"
-      aria-labelledby="clear-heading"
-      aria-describedby="clear-description"
-    >
-      <h2 id="clear-heading">Clear this page?</h2>
-      <p id="clear-description" class="math-help">
-        Remove all writing, images, graphs, and diagrams from this page. You can undo this. Your
-        board color and paper stay the same.
-      </p>
-      <div class="modal-actions">
-        <button id="clear-cancel">Cancel</button
-        ><button id="clear-confirm" class="primary">Clear page</button>
-      </div>
-    </dialog>
-    <dialog id="math-dialog" aria-labelledby="math-heading">
-      <div class="modal-head">
-        <h2 id="math-heading">Mathematics</h2>
-        <button id="math-close" aria-label="Close mathematics tools">×</button>
-      </div>
-      <div class="math-tabs">
-        <button id="tab-graph" class="active">Graphs</button
-        ><button id="tab-geometry">Geometry</button>
-      </div>
-      <form id="graph-form">
-        <label for="functions">Functions · y =</label
-        ><textarea
-          id="functions"
-          rows="3"
-          placeholder="x^2
-2*x + 1"
-        >
-x^2</textarea>
-        <p class="math-help">
-          One function per line (up to 4). Examples: x^2, 2x+1, sin(x), sqrt(x), 1/x. Trigonometric
-          functions use radians.
-        </p>
-        <div class="examples">
-          <button type="button" data-expression="x^2">Quadratic</button
-          ><button type="button" data-expression="2*x+1">Linear</button
-          ><button type="button" data-expression="sin(x)">Sine</button
-          ><button type="button" data-expression="1/x">Reciprocal</button>
-        </div>
-        <div class="ranges">
-          <label>x minimum<input id="xmin" type="number" value="-10" step="any" required /></label
-          ><label>x maximum<input id="xmax" type="number" value="10" step="any" required /></label
-          ><label>y minimum<input id="ymin" type="number" value="-10" step="any" required /></label
-          ><label>y maximum<input id="ymax" type="number" value="10" step="any" required /></label>
-        </div>
-<div class="ranges">
- <label>X-axis interval<input id="graph-grid-step-x" type="number" min="0" step="any" placeholder="Auto (e.g. 1, 2, 0.5)" value="1" /></label>
- <label>Y-axis interval<input id="graph-grid-step-y" type="number" min="0" step="any" placeholder="Auto (e.g. 1, 2, 0.5)" value="1" /></label>
- <label>X-axis subdivisions<input id="graph-grid-subdivisions-x" type="number" min="1" max="20" step="1" value="5" required /></label>
- <label>Y-axis subdivisions<input id="graph-grid-subdivisions-y" type="number" min="1" max="20" step="1" value="5" required /></label>
- </div>
- <label>Grid opacity <output id="graph-grid-opacity-value">35%</output><input id="graph-grid-opacity" type="range" min="0" max="100" value="35" /></label>
- <p class="math-help">Leave axis intervals blank for Auto, or enter a positive step (up to 200 intervals per axis). Divide each major axis tick interval into 5 or 10 small intervals (1 = no subdivisions). X and Y follow their own axis scales. Opacity affects grid lines, not axes or curves.</p>
-        <p class="math-help">
-          Leave functions empty to insert only a coordinate grid. Axes appear when zero is inside
-          the selected range.
-        </p>
-        <div class="modal-actions">
-          <button type="button" id="axes-only">Insert axes only</button
-          ><button class="primary" type="submit">Insert graph</button>
-        </div>
-      </form>
-      <form id="geometry-form" hidden>
-        <label for="geometry-kind">Diagram</label
-        ><select id="geometry-kind">
-          <option value="triangle">Equilateral triangle</option>
-          <option value="right">Right-angled triangle</option>
-          <option value="isosceles">Isosceles triangle</option>
-          <option value="polygon">Regular polygon</option>
-          <option value="circle">Circle with radius</option>
-          <option value="angle">Angle</option>
-        </select>
-        <div class="ranges">
-          <label id="sides-label" hidden
-            >Number of sides<input
-              id="geometry-sides"
-              type="number"
-              min="3"
-              max="12"
-              value="5"
-              step="1" /></label
-          ><label id="angle-label" hidden
-            >Angle in degrees<input
-              id="geometry-angle"
-              type="number"
-              min="1"
-              max="179"
-              value="60"
-              step="any" /></label
-          ><label
-            >Size on board<input
-              id="geometry-size"
-              type="number"
-              min="180"
-              max="700"
-              value="380"
-              step="10"
-              required
-          /></label>
-        </div>
-        <div class="ranges">
-          <label
-            >Rotation (degrees)<input
-              id="geometry-rotation"
-              type="number"
-              value="0"
-              step="1" /></label
-          ><label
-            >Point names<input id="geometry-names" placeholder="P, Q, R" maxlength="180"
-          /></label>
-        </div>
-        <p class="math-help">
-          Separate names with commas, such as P, Q, R. Leave empty for default labels. For circles
-          and angles, the first name labels the centre or vertex.
-        </p>
-        <label class="check-label"
-          ><input id="geometry-labels" type="checkbox" checked /> Show vertex / centre labels</label
-        >
-        <p class="math-help">
-          Diagrams use your current chalk color and width. Use Move to position them, and Text or
-          Chalk to add side lengths and explanations.
-        </p>
-        <div class="modal-actions">
-          <button class="primary" type="submit">Insert diagram</button>
-        </div>
-      </form>
-      <p id="math-error" role="alert"></p>
-    </dialog>
-    <section id="app-state" aria-label="App and local saving status" hidden>
-      <div class="state-labels">
-        <span id="draft-status" role="status">Opening local drafts…</span
-        ><span id="offline-status" role="status">Preparing offline access…</span>
-      </div>
-      <div class="state-actions">
-        <button id="show-drafts" disabled>Local drafts</button
-        ><button id="check-updates" disabled>Check updates</button
-        ><button id="install-app">Install / help</button>
-      </div>
-      <p id="update-notice" role="status" hidden>
-        Update ready. Wait for “Saved on this device”, close all TutorBoard tabs and app windows,
-        then reopen to apply it.
-      </p>
     </section>
-    <dialog id="drafts-dialog" aria-labelledby="drafts-heading">
-      <h2 id="drafts-heading">Continue a lesson</h2>
-      <p>
-        Drafts are saved only in this browser on this device. Restore one below, or close this panel
-        to use the current board. Use Save lesson to keep a separate backup.
-      </p>
-      <p id="draft-empty">No saved drafts yet. Your changes will be saved automatically.</p>
-      <ul id="draft-list"></ul>
-      <div class="modal-actions">
-        <button id="drafts-close" class="primary">Continue to board</button>
+    <section class="audience" aria-labelledby="audience-heading">
+      <div><p class="eyebrow">BUILT FOR TEACHING</p><h2 id="audience-heading">A practical workspace for tutors and teachers</h2></div>
+      <p>Use it while screen sharing in an online class, or prepare a visual lesson in advance. It works well for mathematics, accounting explanations and step-by-step exam question discussions.</p>
+    </section>
+    <section class="features" id="features" aria-labelledby="features-heading">
+      <div class="section-heading"><p class="eyebrow">VERIFIED FEATURES</p><h2 id="features-heading">Everything needed to explain a lesson visually</h2></div>
+      <div class="feature-grid">
+        <article><span aria-hidden="true">✎</span><h3>Natural board tools</h3><p>Write with coloured chalk, highlight important steps, erase by area or whole object, and draw lines and shapes.</p></article>
+        <article><span aria-hidden="true">⌁</span><h3>Mathematics tools</h3><p>Insert coordinate axes, plot functions, and add labelled geometry diagrams that can be moved, resized and rotated.</p></article>
+        <article><span aria-hidden="true">▧</span><h3>Flexible lesson pages</h3><p>Choose white, black, green or blue boards with blank, ruled or grid paper, then add pages as the lesson develops.</p></article>
+        <article><span aria-hidden="true">＋</span><h3>Images and text</h3><p>Insert an exam question image, resize or rotate it, then add typed notes or write your explanation directly over it.</p></article>
+        <article><span aria-hidden="true">↶</span><h3>Autosave and lesson files</h3><p>Drafts save locally in your browser. You can also download an editable lesson file and reopen it later.</p></article>
+        <article><span aria-hidden="true">⇩</span><h3>Offline use and exports</h3><p>Install the board for offline lessons, export one page as PNG, or create a landscape PDF of the full lesson.</p></article>
       </div>
-    </dialog>
-    <dialog id="install-dialog" aria-labelledby="install-heading">
-      <h2 id="install-heading">Install TutorBoard</h2>
-      <p id="install-status" role="status"></p>
-      <button id="install-now" class="primary" hidden>Install app</button>
-      <p>
-        Open the app online once and wait for <strong>Ready offline</strong>. Then drawing, images,
-        graphs, lesson files and PDF exports work without an internet connection.
-      </p>
-      <ul>
-        <li>
-          <strong>Microsoft Edge:</strong> close this help window, then choose
-          <strong>Menu (...) &gt; More tools &gt; Apps &gt; Install this site as an app</strong>. If
-          TutorBoard is already installed, enter <strong>edge://apps</strong> in the address bar and
-          open it there.
-        </li>
-        <li>
-          <strong>Chrome:</strong> use the install icon in the address bar or the browser menu.
-        </li>
-        <li>
-          <strong>iPhone / iPad:</strong> open in Safari, choose Share → Add to Home Screen → Open
-          as Web App / Add.
-        </li>
-        <li>
-          Other browsers can use the website normally; installation options depend on your browser.
-        </li>
-      </ul>
-      <p id="storage-help">
-        Autosave keeps local drafts. Clearing browser data or removing app data can erase them. Keep
-        downloaded lesson backups. This app does not upload your lessons.
-      </p>
-      <button id="keep-storage">Keep drafts on this device</button>
-      <div class="modal-actions"><button id="install-close" class="primary">Got it</button></div>
-    </dialog>
-  <div id="graph-lens" hidden aria-label="Graph magnifier"><canvas id="graph-lens-canvas" width="600" height="600"></canvas><button id="graph-lens-close" aria-label="Close graph magnifier">&#215;</button><output id="graph-lens-point"></output></div>
-    <script src="vendor/pdf-lib.min.js"></script>
-    <script src="math.js"></script>
-    <script src="app.js"></script>
-    <script src="board-persistence.js"></script>
-    <script src="draft-store.js"></script>
-    <script src="pwa.js"></script>
-  </body>
+    </section>
+    <section class="steps" id="how-it-works" aria-labelledby="steps-heading">
+      <div class="section-heading"><p class="eyebrow">START IN SECONDS</p><h2 id="steps-heading">From blank board to finished lesson</h2></div>
+      <ol>
+        <li><span>1</span><div><h3>Set up your board</h3><p>Choose the board colour, paper style, chalk colour and stroke width.</p></div></li>
+        <li><span>2</span><div><h3>Teach your way</h3><p>Write, draw, insert graphs or diagrams, and add new pages as needed.</p></div></li>
+        <li><span>3</span><div><h3>Save or share</h3><p>Keep an editable lesson file, export a page image, or create a PDF of the full lesson.</p></div></li>
+      </ol>
+    </section>
+    <section class="cta" aria-labelledby="cta-heading"><div><p class="eyebrow">READY FOR YOUR NEXT LESSON?</p><h2 id="cta-heading">Start with a clean board and make the first mark</h2></div><a class="button button-light" href="whiteboard.html">Open Whiteboard</a></section>
+  </main>
+  <footer class="site-footer"><a class="brand" href="/"><span class="mark" aria-hidden="true">V</span><span>Vinee TutorBoard</span></a><p>A digital whiteboard made for teaching.</p><a href="whiteboard.html">Open Whiteboard</a></footer>
+</body>
 </html>

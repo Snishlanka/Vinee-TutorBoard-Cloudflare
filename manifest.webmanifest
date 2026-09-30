@@ -4,7 +4,7 @@
   "short_name": "TutorBoard",
   "description": "Your offline teaching whiteboard for lessons, drawings, graphs and geometry.",
   "lang": "en",
-  "start_url": "./",
+  "start_url": "./whiteboard.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#edf1f6",
