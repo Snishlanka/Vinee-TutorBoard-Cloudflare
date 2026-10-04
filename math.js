@@ -141,17 +141,66 @@ const TutorMath = (() => {
     }
     return result;
   }
-  function graph(c, o, bg) {
-    const left = o.x + 58,
-      top = o.y + 70,
-      w = o.w - 84,
-      h = o.h - 114;
+  // Equal physical length per axis unit; aspect is display Y-scale / X-scale.
+  function graphFeatures(o) {
+    const points = [], span = o.xmax-o.xmin;
+    const clean = v => Math.abs(v)<1e-12 ? 0 : Math.abs(v)>1e-6 && Math.abs(v-Math.round(v))<1e-8 ? Math.round(v) : +v.toPrecision(10);
+    const add = (x,y,label) => {
+      if(!Number.isFinite(x)||!Number.isFinite(y)||x<o.xmin||x>o.xmax||y<o.ymin||y>o.ymax) return;
+      x=clean(x);y=clean(y);
+      if(!points.some(p=>p.label===label&&Math.abs(p.x-x)<span*1e-7))points.push({x,y,label});
+    };
+    const bisect=(f,a,b)=>{
+      let fa=f(a);
+      for(let j=0;j<55;j++){
+        const mid=(a+b)/2,fm=f(mid);
+        if(!Number.isFinite(fm))return NaN;
+        if(fm===0)return mid;
+        if(Math.sign(fm)===Math.sign(fa)){a=mid;fa=fm;}else b=mid;
+      }
+      return (a+b)/2;
+    };
+    for(const curve of o.curves){
+      let f;try{f=compile(curve.expression);}catch{continue;}
+      if(o.xmin<=0&&o.xmax>=0)add(0,f(0),'Y-intercept');
+      const h=span*1e-5;
+      const derivative=x=>(f(x+h)-f(x-h))/(2*h);
+      for(let i=0;i<256;i++){
+        const a=o.xmin+i/256*span,b=o.xmin+(i+1)/256*span,fa=f(a),fb=f(b);
+        if(fa===0)add(a,0,'X-intercept');
+        if(fb===0)add(b,0,'X-intercept');
+        if(Number.isFinite(fa)&&Number.isFinite(fb)&&fa*fb<0){
+          const root=bisect(f,a,b);
+          if(Math.abs(f(root))<1e-7)add(root,0,'X-intercept');
+        }
+        const da=derivative(a),db=derivative(b);
+        if(!Number.isFinite(da)||!Number.isFinite(db)||!((da<=0&&db>=0)||(da>=0&&db<=0))||(da===0&&db===0))continue;
+        const x=da===0?a:db===0?b:bisect(derivative,a,b),y=f(x);
+        if(x<=o.xmin||x>=o.xmax||!Number.isFinite(y))continue;
+        const before=derivative(x-h*2),after=derivative(x+h*2);
+        if(before<0&&after>0)add(x,y,'Minimum');
+        if(before>0&&after<0)add(x,y,'Maximum');
+        if(Math.abs(y)<1e-9)add(x,0,'X-intercept');
+      }
+    }
+    return points;
+  }
+  function plotBounds(o, aspect = 1) {
+    const availableW = o.w - 84, availableH = o.h - 114;
+    const dx = o.xmax - o.xmin, dy = o.ymax - o.ymin;
+    const ratio = Number.isFinite(aspect) && aspect > 0 ? aspect : 1;
+    const w = Math.min(availableW, availableH * ratio * dx / dy);
+    const h = w * dy / dx / ratio;
+    return { left: o.x + 58, top: o.y + 70, w, h };
+  }
+  function graph(c, o, bg, aspect = 1) {
+    const {left, top, w, h} = plotBounds(o, aspect);
     const X = (x) => left + ((x - o.xmin) / (o.xmax - o.xmin)) * w,
       Y = (y) => top + ((o.ymax - y) / (o.ymax - o.ymin)) * h,
       ink = bg === 'white' ? '#34425a' : '#e7edf8';
     c.save();
     c.fillStyle = bg === 'white' ? '#ffffffed' : '#ffffff09';
-    c.fillRect(o.x, o.y, o.w, o.h);
+    c.fillRect(o.x, o.y, w + 84, h + 114);
     c.strokeStyle = bg === 'white' ? '#dce2ec' : '#ffffff40';
     c.lineWidth = 1;
     c.strokeRect(left, top, w, h);
@@ -259,7 +308,7 @@ const TutorMath = (() => {
       c.fillText(
         'y = ' +
           (curve.expression.length > 36 ? curve.expression.slice(0, 33) + '…' : curve.expression),
-        o.x + 12 + ((i % 2) * o.w) / 2,
+        o.x + 12 + ((i % 2) * (w + 84)) / 2,
         o.y + 20 + Math.floor(i / 2) * 25
       );
     });
@@ -426,5 +475,5 @@ const TutorMath = (() => {
     }
     return false;
   }
-  return { compile, ticks, minorTicks, graph, geometry, valid };
+  return { compile, axisStep, ticks, minorTicks, graphFeatures, plotBounds, graph, geometry, valid };
 })();

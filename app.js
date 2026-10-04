@@ -185,7 +185,7 @@ function arrowPoints(o) {
     })),
   ];
 }
-function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) {
+function drawObject(c, o, boardColor = page().boardColor, skipErasures = false, graphAspect = c === ctx ? graphDisplayAspect() : 1) {
   if (o.erasures?.length && !skipErasures) {
     if (!eraseLayer) {
       eraseLayer = document.createElement('canvas');
@@ -194,7 +194,7 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     }
     const layer = eraseLayer.getContext('2d');
     layer.clearRect(0, 0, W, H);
-    drawObject(layer, o, boardColor, true);
+    drawObject(layer, o, boardColor, true, graphAspect);
     layer.save();
     layer.globalCompositeOperation = 'destination-out';
     layer.strokeStyle = '#000';
@@ -255,7 +255,7 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false) 
     connectorPath(c, o);
     c.stroke();
   }
-  if (o.type === 'graph') TutorMath.graph(c, o, boardColor || 'white');
+  if (o.type === 'graph') TutorMath.graph(c, o, boardColor || 'white', graphAspect);
   if (o.type === 'geometry') TutorMath.geometry(c, o);
   if (o.type === 'triangle') {
     c.beginPath();
@@ -604,6 +604,10 @@ function hit(o, p) {
   if (canTransform(o) && o.rotation)
     p = rotatePoint(p, { x: o.x + o.w / 2, y: o.y + o.h / 2 }, -o.rotation);
   const pad = 12 + o.width;
+  if (o.type === 'graph') {
+    const b = objectBounds(o);
+    return p.x >= b.x && p.x <= b.right && p.y >= b.y && p.y <= b.bottom;
+  }
   if (o.points) {
     if (o.points.length === 1) return Math.hypot(p.x - o.points[0].x, p.y - o.points[0].y) < pad;
     return o.points.some(
@@ -646,6 +650,10 @@ function hit(o, p) {
   );
 }
 function objectBounds(o) {
+  if (o.type === 'graph') {
+    const b = graphPlot(o);
+    return {x:o.x, y:o.y, right:o.x+b.w+84, bottom:o.y+b.h+114};
+  }
   if (['arrow', 'line', 'triangle'].includes(o.type)) {
     const center = { x: o.x + o.w / 2, y: o.y + o.h / 2 };
     const points = (
@@ -2134,6 +2142,10 @@ function updateHoverCursor(p, forceDraw = false) {
       : toolCursor(tool);
 }
 function selectionHandles(o) {
+  if (o.type === 'graph') {
+    const b = objectBounds(o);
+    return [[0,0],[1,0],[1,1],[0,1]].map(([u,v]) => ({kind:'corner',u,v,x:b.x+(b.right-b.x)*u,y:b.y+(b.bottom-b.y)*v}));
+  }
   if (!canTransform(o) && o.type !== 'text') return [];
   const center = { x: o.x + (o.w || 0) / 2, y: o.y + (o.h || 0) / 2 };
   const world = (p) => rotatePoint(p, center, o.rotation || 0);
@@ -2209,7 +2221,18 @@ function dragControl(g, p, snap) {
     h = g.handle;
   const center = { x: old.x + (old.w || 0) / 2, y: old.y + (old.h || 0) / 2 };
   const local = rotatePoint(p, center, -(old.rotation || 0));
-  if (h.kind === 'rotate') {
+  if (o.type === 'graph' && h.kind === 'corner') {
+    const b = graphPlot(old);
+    const anchor = {x:old.x+(1-h.u)*(b.w+84),y:old.y+(1-h.v)*(b.h+114)};
+    const requestedW = (h.u ? p.x-anchor.x : anchor.x-p.x)-84;
+    const requestedH = (h.v ? p.y-anchor.y : anchor.y-p.y)-114;
+    const minScale = Math.max(16/b.w,16/b.h);
+    const scale = Math.max(minScale, Math.min(requestedW/b.w,requestedH/b.h,(W-84)/b.w,(H-114)/b.h));
+    o.w=b.w*scale+84; o.h=b.h*scale+114;
+    o.x=h.u ? anchor.x : anchor.x-o.w;
+    o.y=h.v ? anchor.y : anchor.y-o.h;
+    if (old.erasures) o.erasures=old.erasures.map(m=>({...m,radius:m.radius*scale,points:m.points.map(q=>({x:o.x+58+(q.x-old.x-58)*scale,y:o.y+70+(q.y-old.y-70)*scale}))}));
+  } else if (h.kind === 'rotate') {
     const initial = Math.atan2(g.start.y - center.y, g.start.x - center.x);
     let degrees =
       (old.rotation || 0) +
@@ -2744,6 +2767,7 @@ function layoutBoard() {
     $('text-place').style.top = Math.min(h - 32, Number(ed.dataset.y) * (h / H) + parseFloat(ed.style.height) * (h / H) / scale + 6) + 'px';
     syncTextControls();
   }
+  render();
 }
 function setBoardZoom(value, anchor = null) {
   commitText();
@@ -2807,8 +2831,14 @@ function syncGraphCurveColors() {
   if (!graph.curves.length) list.textContent = 'Axes-only graph: no curves to recolor.';
 }
 let graphLensState = null;
+function graphDisplayAspect() {
+  const r = canvas.getBoundingClientRect();
+  return r.width && r.height ? (r.height / H) / (r.width / W) : 1;
+}
+function graphPlot(g) { return TutorMath.plotBounds(g, graphDisplayAspect()); }
 function insideGraphPlot(g, p) {
-  return p.x >= g.x + 58 && p.x <= g.x + g.w - 26 && p.y >= g.y + 70 && p.y <= g.y + g.h - 44;
+  const b = graphPlot(g);
+  return p.x >= b.left && p.x <= b.left+b.w && p.y >= b.top && p.y <= b.top+b.h;
 }
 function hideGraphLens() { $('graph-lens').hidden = true; graphLensState = null; }
 function showGraphLens(graph, p, event) {
@@ -2824,9 +2854,9 @@ function showGraphLens(graph, p, event) {
   c.scale(3 * r.width / W * 600 / size, 3 * r.height / H * 600 / size);
   c.translate(-p.x,-p.y);
   drawPaper(c, page().background, page().boardColor);
-  drawObject(c, graph);
+  drawObject(c, graph, page().boardColor, false, graphDisplayAspect());
   c.restore();
-  graphLensState = { graph, center: p,
+  graphLensState = { graph, plot: graphPlot(graph), features: TutorMath.graphFeatures(graph), center: p,
     sx: 3 * r.width / W * 600 / size, sy: 3 * r.height / H * 600 / size,
     image: c.getImageData(0,0,600,600), pinned: null };
   paintGraphLens(lensPointAt(300,300));
@@ -2858,13 +2888,14 @@ boardStage.addEventListener('scroll',hideGraphLens);
 
 function lensPointAt(px, py) {
   const state = graphLensState, g = state.graph;
+  const plot = state.plot || TutorMath.plotBounds(g);
   const bx = state.center.x + (px-300)/state.sx;
   const by = state.center.y + (py-300)/state.sy;
-  let x = g.xmin + (bx-g.x-58)/(g.w-84)*(g.xmax-g.xmin);
-  let y = g.ymax - (by-g.y-70)/(g.h-114)*(g.ymax-g.ymin);
+  let x = g.xmin + (bx-plot.left)/plot.w*(g.xmax-g.xmin);
+  let y = g.ymax - (by-plot.top)/plot.h*(g.ymax-g.ymin);
   if (x<g.xmin || x>g.xmax || y<g.ymin || y>g.ymax) return null;
-  const kx=(g.w-84)/(g.xmax-g.xmin)*state.sx;
-  const ky=(g.h-114)/(g.ymax-g.ymin)*state.sy;
+  const kx=plot.w/(g.xmax-g.xmin)*state.sx;
+  const ky=plot.h/(g.ymax-g.ymin)*state.sy;
   const threshold=24; // About ten CSS pixels inside the lens.
   let best=null, distance=threshold;
   const consider=(cx,cy,label)=>{
@@ -2872,38 +2903,36 @@ function lensPointAt(px, py) {
     const d=Math.hypot((cx-x)*kx,(cy-y)*ky);
     if(d<distance){distance=d;best={x:cx,y:cy,label};}
   };
-  // Prioritize nearby intercepts; roots are numerically refined and checked.
-  for(const curve of g.curves) {
-    let f; try {f=TutorMath.compile(curve.expression);} catch {continue;}
-    consider(0,f(0),'Y-intercept');
-    let root=x;
-    for(let i=0;i<20;i++) {
-      const value=f(root), h=Math.max(1e-7,Math.abs(root)*1e-7);
-      const derivative=(f(root+h)-f(root-h))/(2*h);
-      if(!Number.isFinite(value)||!Number.isFinite(derivative)||Math.abs(derivative)<1e-12) break;
-      root-=value/derivative;
-    }
-    // A repeated root (e.g. x^2) converges slowly. Prefer the verified
-    // exact origin when its remaining error is far below one lens pixel.
-    if(Math.abs(root * kx)<0.01 && f(0)===0) root=0;
-    if(Math.abs(f(root))<1e-9) consider(root,0,'X-intercept (numeric)');
-  }
-  if(!best) {
+  // Named features take priority, then curves at grid-aligned X, then grid intersections.
+  for(const feature of state.features || TutorMath.graphFeatures(g))
+    consider(feature.x,feature.y,feature.label);
+  if(best)return best;
+  const snap=(value,lo,hi,interval,divisions)=>{
+    const step=TutorMath.axisStep(lo,hi,interval)/(divisions??1);
+    const first=Math.ceil(lo/step-1e-10),last=Math.floor(hi/step+1e-10);
+    if(first>last)return null;
+    const index=Math.max(first,Math.min(last,Math.round(value/step)));
+    return index===0?0:+(index*step).toPrecision(12);
+  };
+  const gx=snap(x,g.xmin,g.xmax,g.xTickStep,g.gridSubdivisionsX);
+  const gy=snap(y,g.ymin,g.ymax,g.yTickStep,g.gridSubdivisionsY);
+  if(gx!==null) {
     for(const curve of g.curves) {
-      try {consider(x,TutorMath.compile(curve.expression)(x),'On curve');} catch {}
+      try { consider(gx,TutorMath.compile(curve.expression)(gx),'On curve'); } catch {}
     }
-    if(!best) {consider(0,y,'On Y-axis');consider(x,0,'On X-axis');}
+    if(best)return best;
   }
-  return best || {x,y,label:'Pointer'};
+  return gx===null||gy===null?null:{x:gx,y:gy,label:'Grid point'};
 }
 function paintGraphLens(point) {
   const state=graphLensState; if(!state) return;
   const c=$('graph-lens-canvas').getContext('2d'),g=state.graph;
   c.putImageData(state.image,0,0);
+  const plot = state.plot || TutorMath.plotBounds(g);
   const marker=(p,color)=>{
     if(!p)return;
-    const bx=g.x+58+(p.x-g.xmin)/(g.xmax-g.xmin)*(g.w-84);
-    const by=g.y+70+(g.ymax-p.y)/(g.ymax-g.ymin)*(g.h-114);
+    const bx=plot.left+(p.x-g.xmin)/(g.xmax-g.xmin)*plot.w;
+    const by=plot.top+(g.ymax-p.y)/(g.ymax-g.ymin)*plot.h;
     const x=300+(bx-state.center.x)*state.sx,y=300+(by-state.center.y)*state.sy;
     c.strokeStyle=color;c.lineWidth=2;c.beginPath();
     c.moveTo(x-16,y);c.lineTo(x+16,y);c.moveTo(x,y-16);c.lineTo(x,y+16);c.stroke();

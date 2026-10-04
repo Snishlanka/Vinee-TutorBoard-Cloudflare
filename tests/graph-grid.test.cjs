@@ -46,3 +46,13 @@ test('custom intervals use independent zero-aligned axis ticks and subdivisions'
  assert.ok(m.valid({...graph,xTickStep:null}));
  for(const xTickStep of [0,-1,.0001,NaN,'1']) assert.equal(m.valid({...graph,xTickStep}),false);
 });
+
+test('equal-unit plot bounds fit unequal ranges and display scales',()=>{
+ const g={...graph,xmin:-2,xmax:4,ymin:-5,ymax:6};
+ for(const aspect of [.4,1,2.5]){
+  const b=m.plotBounds(g,aspect);
+  assert.ok(Math.abs(b.w/6-b.h*aspect/11)<1e-9);
+  assert.ok(b.w<=g.w-84+1e-9&&b.h<=g.h-114+1e-9);
+  assert.ok(b.left>=g.x+58&&b.top>=g.y+70);
+ }
+});

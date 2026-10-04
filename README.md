@@ -65,7 +65,7 @@ Controls wrap on smaller screens. Hover over icon-only buttons to see their tool
 
 ### Resize and rotate shapes
 
-Choose a shape and drag to draw; it is selected automatically, and your chosen drawing tool stays active. Hover over any object (including freehand strokes, text, images, and graphs) for the grab cursor, then drag to move it or click to select it. Draw on empty space to keep using your selected tool. Hold **Alt** to draw over an existing object. Eraser continues to erase; the dedicated **Move** tool is also available. Drag any white corner to resize, or hold Shift to preserve proportions. Drag the **rotation-arrow symbol** above the shape to rotate (Shift snaps to 15 degrees). The gold rectangle/parallelogram handle adjusts its slant; move it back to the left edge to restore a rectangle. Drag the gold triangle top point to change its shape. Selected objects show tiny handles without a surrounding dashed box. The cursor changes over resize, move/adjustment, and rotation handles; drag targets remain larger than the visible squares. The sidebar still offers exact dimensions and rotation.
+Choose a shape and drag to draw; it is selected automatically, and your chosen drawing tool stays active. Hover over an object for the grab cursor, then drag to move it or click to select it. Inside a graph plot, the magnifier cursor indicates click-to-inspect; dragging still moves the graph. Draw on empty space to keep using your selected tool. Hold **Alt** to draw over an existing object. Eraser continues to erase; the dedicated **Move** tool is also available. Drag any white corner to resize, or hold Shift to preserve proportions. Drag the **rotation-arrow symbol** above the shape to rotate (Shift snaps to 15 degrees). The gold rectangle/parallelogram handle adjusts its slant; move it back to the left edge to restore a rectangle. Drag the gold triangle top point to change its shape. Selected objects show tiny handles without a surrounding dashed box. The cursor changes over resize, move/adjustment, and rotation handles; drag targets remain larger than the visible squares. The sidebar still offers exact dimensions and rotation.
 
 Open the **Line / Arrow** dropdown next to Text in the board toolbar to choose a connector. Drag either endpoint to adjust it and the gold middle handle to curve it. Arrowheads follow the curve direction. Connectors have endpoint and bend handles without a rotation handle. These changes support Undo/Redo, local drafts, lesson JSON, PNG, and PDF export.
 
@@ -125,6 +125,19 @@ sin(x)
 Supported functions include `sin`, `cos`, `tan`, `sqrt`, `abs`, `ln`, `log` (base 10), and `exp`. Expressions support `x`, `pi`, `e`, parentheses, powers, and implicit multiplication such as `2x`. Trigonometric functions use radians.
 
 Set the x and y ranges before inserting a graph. Leave the function field empty, or choose **Insert axes only**, for a coordinate grid. Available geometry diagrams include equilateral, right-angled, and isosceles triangles, regular polygons, a circle with radius, and an angle.
+
+
+### Graph grids, resizing, and inspection
+
+New graphs use **axis interval 1** and **5 subdivisions** on both axes, giving small intervals of 0.2. Set **X-axis interval** and **Y-axis interval** independently (for example 1, 2, 5, or 0.5); leave blank for automatic spacing. **X-axis subdivisions** and **Y-axis subdivisions** divide each major interval into 1-20 smaller intervals. **Grid opacity** controls grid lines from 0% to 100% while axes, labels, and curves stay visible. These controls are available in **Graph & axes** and, for an existing selected graph, under **GRAPH GRID** in the tools panel.
+
+Graphs give each X/Y unit the same visual length. Matching intervals and subdivisions therefore produce square cells, even after window resizing or opening/closing panels. Unequal axis ranges can produce a tall or wide plot. The background and click target fit the plot plus its labels, without large blank side areas.
+
+Select a graph to reveal four corner handles. Drag a corner to resize proportionally from the opposite corner. Axis ranges, tick intervals, subdivisions, opacity, and curve colors are preserved. The handles keep the unit scales equal and support Undo/Redo. Drag elsewhere on the graph to move it.
+
+Under **GRAPH COLORS**, change each curve's color separately. Grid settings and curve colors are retained in saved lessons, drafts, and exports. PNG/PDF rendering also uses equal axis scales.
+
+Inside the plot grid, the cursor becomes a magnifier; click to open a circular **3x lens**. Graph labels and margins use the move cursor. Move inside the lens to inspect coordinates, then click to pin a green marker. Nearby minimum, maximum, and intercept points show their numerically calculated values and feature names. Near a curve, **On curve** snaps X to the grid step and calculates Y from that curve. Elsewhere the marker snaps to the nearest grid intersection using each axis interval divided by its subdivisions, and displays those grid coordinates. The readout uses nine significant digits, with the origin shown as `x = 0, y = 0`. Click another point to replace the marker. Escape, the close button, an outside click, scrolling, or window resizing closes the lens. Lens markers are a temporary teaching aid and are excluded from lessons and exports.
 
 ### Keyboard shortcuts
 
@@ -227,7 +240,7 @@ The configuration serves assets from the repository root, enables the `workers.d
 
 ## Development and verification
 
-Edit the static source files directly and preview them with a local server. Run all unit regressions with `node --test tests/*.test.cjs`, covering offline navigation, image paste, shape geometry and fills, clipboard behavior, pointer input, and page controls. This checkout does not include build scripts.
+Edit the static source files directly and preview them with a local server. Run all unit regressions with `node --test tests/*.test.cjs`, covering offline navigation, image paste, shape geometry and fills, clipboard behavior, pointer input, and page controls. Graph regressions also cover custom ticks, subdivisions, equal-unit layout, and numerical origin snapping. This checkout does not include build scripts.
 
 `sw.js` contains a cache `REVISION` and an `ASSETS` list. When changing cached application files, update the cache revision before release; include new offline assets in both `ASSETS` and `.assetsignore`. Otherwise, returning users can continue receiving the previous cached application.
 
@@ -237,7 +250,7 @@ Before publishing changes, manually verify:
 - Shape/line Copy/Paste on the same and different pages; all three fill styles; Delete; and regular text/screenshot clipboard behavior.
 - Edge-arrow panel placement on desktop/mobile and the top arrow without a reserved blank row.
 - Physical pen/palm input on the target teaching screen.
-- Page navigation, board backgrounds, graphs, and geometry diagrams.
+- Page navigation, board backgrounds, graphs, and geometry diagrams. Check equal graph units, compact bounds, corner resizing with unchanged axis settings, curve colors, and lens point selection.
 - Saving and reopening a lesson, including images, and exporting PNG and PDF.
 - Restoring a local draft after reopening the app.
 - Reloading offline after **Ready offline**, and applying an update after all app windows close.
@@ -269,20 +282,19 @@ Use `--check` instead of `--write` to verify formatting without modifying files.
 
 PDF export uses the bundled `pdf-lib` library. Its license is included in [vendor/pdf-lib-LICENSE.md](vendor/pdf-lib-LICENSE.md). This repository does not currently include a license for the TutorBoard application itself.
 
-### Drawing regression checks
+### Browser regression checks
 
 Run `node --test tests/*.test.cjs` for the unit regressions. `tests/browser-editing.cjs` exercises real browser event handlers, shape controls, text editing/history, welcome-message visibility, and simultaneous pen/touch events. `tests/browser-shapes.cjs` checks native keyboard shape/text copy-paste, fill-pattern rendering, hover cursors, history, JSON save/reopen, and PNG export. Start the local server on port 8765, make Playwright available through `PLAYWRIGHT_MODULE` (or a normal installation), and run `node tests/browser-editing.cjs` and `node tests/browser-shapes.cjs`; both use installed Microsoft Edge. Override `BOARD_URL` if needed. Synthetic input tests do not replace a physical stylus/touch check.
 
 Fit to window fills the full available board width and height on laptops and monitors, including after panel changes. Display proportions adapt to the screen; saved lesson coordinates and export dimensions remain unchanged. Zoom in to scroll around a larger view.
 
-Graph grids: set **X-axis subdivisions** and **Y-axis subdivisions** in Graph & axes (1 = major grid only; 5 or 10 = that many small intervals between major ticks). Each axis uses its own numeric scale. **Grid opacity** ranges from 0% to 100% without dimming axes, labels, or curves. Select an existing graph and open the tools panel to edit these settings under **GRAPH GRID**. Changes support Undo, saved lessons, and exports.
+Graph browser checks use the local `/whiteboard.html` route:
 
-Select a graph and open the tools panel to change each curve color under **GRAPH COLORS**. Hover over a graph for the magnifier cursor; click to show a circular 3x zoom with a center crosshair and approximate axis coordinates. Drag still moves the graph. Escape, the close button, or another board click dismisses the lens. The lens is a viewing aid and is excluded from saved lessons and exports.
+```sh
+node tests/browser-graph-grid.cjs
+node tests/browser-graph-square.cjs
+node tests/browser-graph-resize.cjs
+node tests/browser-graph-lens.cjs
+```
 
-Inside the graph lens, move the pointer to inspect coordinates and click to pin a green point marker. Nearby curves and axes snap to their values; nearby intercepts are refined numerically and labeled. The readout rounds values to nine significant digits; it is not a symbolic exact-value solver. Moving away retains the pinned point; click another point to replace it.
-
-The magnifier cursor and click-to-zoom apply only inside the graph plot grid. Graph labels and outer margins use the move cursor.
-
-Use **X-axis interval** and **Y-axis interval** to set major grid/tick spacing independently (for example 1, 2, 5, or 0.5). Leave blank for automatic spacing. Subdivisions divide that chosen interval. These settings are available when inserting a graph and when selecting one under GRAPH GRID, and persist in lessons and exports.
-
-New graphs default to an interval of **1** and **5 subdivisions** on both axes (small intervals of 0.2).
+These checks cover graph settings/history, square units across screen sizes and panel states, compact click bounds, corner resizing with unchanged axes, and interactive lens coordinates. They use the same Playwright/Edge setup as the drawing checks.

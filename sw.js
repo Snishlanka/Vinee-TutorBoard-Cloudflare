@@ -1,5 +1,5 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = '20260930-seo-landing';
+const REVISION = '20261004-grid-aligned-curve-points';
 const ASSETS = [
   'whiteboard.html',
   'theme.js',
