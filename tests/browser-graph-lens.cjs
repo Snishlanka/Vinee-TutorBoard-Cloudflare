@@ -29,6 +29,7 @@ const assert=require('node:assert/strict');
   await p.locator('#undo').click();
   assert.notEqual(await p.evaluate(()=>page().objects[0].curves[0].color),'#ff0000');
   await p.locator('#redo').click();
+  await p.locator('[data-tool=move]').click();
   const target=await p.evaluate(()=>{
    const g=page().objects[0],r=canvas.getBoundingClientRect(),plot=graphPlot(g);
    return {x:r.left+(plot.left+plot.w/2)*r.width/W,y:r.top+(plot.top+plot.h/2)*r.height/H};

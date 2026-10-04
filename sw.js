@@ -1,5 +1,5 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = '20261004-grid-aligned-curve-points';
+const REVISION = '20261004-chalk-writing-mode';
 const ASSETS = [
   'whiteboard.html',
   'theme.js',

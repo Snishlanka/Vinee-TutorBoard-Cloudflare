@@ -154,11 +154,12 @@ for (const type of ['pen', 'line', 'rect', 'text', 'image', 'graph', 'geometry']
         : { type, x: 10, y: 10, w: 100, h: 100 };
     board.objects.push(object);
     c.hit = () => true;
+    c.tool = 'rect';
     c.canvas.onpointerdown(event(1, 'mouse'));
     assert.equal(c.gesture.kind, 'move');
     assert.equal(c.canvas.style.cursor, 'grabbing');
     c.canvas.onpointerup(event(1, 'mouse', 40, 50));
-    assert.equal(c.tool, 'pen');
+    assert.equal(c.tool, 'rect');
     assert.equal(board.objects.length, 1);
     assert.equal((object.points?.[0] || object).x, 40);
     assert.equal((object.points?.[0] || object).y, 50);
@@ -181,4 +182,22 @@ test('Alt draws over an object and eraser still erases instead of moving', () =>
   c.canvas.onpointerdown(event(2, 'mouse'));
   assert.equal(c.gesture.kind, 'eraser');
   assert.equal(erased, true);
+});
+
+test('Chalk draws consecutive strokes over selected objects and controls instead of moving them',()=>{
+ const {c,board}=setup();
+ const original={type:'pen',points:[{x:10,y:10},{x:20,y:20}]};
+ board.objects.push(original);c.selected=original;
+ c.hit=()=>true;c.controlAt=()=>({kind:'corner',u:1,v:1,x:10,y:10});
+ for(let id=1;id<=3;id++){
+  c.canvas.onpointerdown(event(id,'mouse'));
+  assert.equal(c.gesture.kind,'pen');
+  c.canvas.onpointerup(event(id,'mouse',40,50));
+ }
+ assert.equal(board.objects.length,4);
+ assert.deepEqual(original.points,[{x:10,y:10},{x:20,y:20}]);
+ assert.equal(c.tool,'pen');
+ c.tool='move';c.controlAt=()=>null;
+ c.canvas.onpointerdown(event(4,'mouse'));
+ assert.equal(c.gesture.kind,'move');
 });

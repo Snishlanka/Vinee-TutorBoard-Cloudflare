@@ -843,7 +843,7 @@ canvas.onpointerdown = (e) => {
   };
   canvas.setPointerCapture(e.pointerId);
   // Object manipulation is temporary; it never changes the chosen drawing tool.
-  if (tool !== 'eraser' && !e.altKey) {
+  if (tool !== 'pen' && tool !== 'eraser' && !e.altKey) {
     const handle = selected && controlAt(selected, p);
     if (handle) {
       checkpoint();
@@ -1115,7 +1115,7 @@ function openTextBox(p, existing = null) {
   ed.focus({ preventScroll: true });
 }
 canvas.ondblclick = (e) => {
-  if (tool === 'eraser' || e.altKey || (e.pointerType && !acceptsPointer(e))) return;
+  if (tool === 'pen' || tool === 'laser' || tool === 'eraser' || e.altKey || (e.pointerType && !acceptsPointer(e))) return;
   const p = point(e),
     target = [...page().objects].reverse().find((o) => o.type === 'text' && hit(o, p));
   if (target) {
@@ -2129,7 +2129,7 @@ function controlCursor(handle, object) {
   ];
 }
 function updateHoverCursor(p, forceDraw = false) {
-  if (tool === 'laser' || tool === 'eraser' || forceDraw) {
+  if (tool === 'pen' || tool === 'laser' || tool === 'eraser' || forceDraw) {
     refreshCursor();
     return;
   }
@@ -2868,7 +2868,7 @@ let graphLensPress = null;
 canvas.addEventListener('pointerdown', e => {
   hideGraphLens();
   graphLensPress = null;
-  if (e.button !== 0 || e.altKey || tool === 'laser' || tool === 'eraser' || !acceptsPointer(e) || activePointer) return;
+  if (e.button !== 0 || e.altKey || tool === 'pen' || tool === 'laser' || tool === 'eraser' || !acceptsPointer(e) || activePointer) return;
   const p = point(e), graph = [...page().objects].reverse().find(o => hit(o,p));
   if (graph?.type === 'graph' && insideGraphPlot(graph, p)) graphLensPress = {id:e.pointerId,graph,x:e.clientX,y:e.clientY};
 }, true);

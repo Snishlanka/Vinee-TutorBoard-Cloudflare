@@ -21,7 +21,7 @@ const assert=require('node:assert/strict');
  }
  await p.setViewportSize({width:1440,height:900});
  await p.waitForTimeout(80);
- await p.evaluate(()=>{selected=page().objects[0];syncSelection();render();});
+ await p.evaluate(()=>{setTool('move');selected=page().objects[0];syncSelection();render();});
  const initial=await p.evaluate(()=>{const g=selected;return {w:graphPlot(g).w,h:graphPlot(g).h,ranges:[g.xmin,g.xmax,g.ymin,g.ymax,g.xTickStep,g.yTickStep,g.gridSubdivisionsX,g.gridSubdivisionsY]};});
  for(const corner of [[1,1],[0,0]]){
   const start=await p.evaluate(([u,v])=>{const handle=selectionHandles(selected).find(h=>h.u===u&&h.v===v),r=canvas.getBoundingClientRect();return {x:r.left+handle.x/W*r.width,y:r.top+handle.y/H*r.height};},corner);
