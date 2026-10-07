@@ -100,7 +100,7 @@ function paintShapeFill(c, o) {
   c.restore();
 }
 function canTransform(o) {
-  return isEditableShape(o) || ['geometry', 'image'].includes(o.type);
+  return isEditableShape(o) || ['geometry', 'image', 'table', 'statistics'].includes(o.type);
 }
 // Midpoint quadratic interpolation keeps the stroke inside its sampled path
 // and works identically for live ink, thumbnails, PNG, and PDF rendering.
@@ -257,6 +257,7 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false, 
   }
   if (o.type === 'graph') TutorMath.graph(c, o, boardColor || 'white', graphAspect);
   if (o.type === 'geometry') TutorMath.geometry(c, o);
+  if (o.type === 'table' || o.type === 'statistics') TutorData.draw(c, {...o,foreground:o.background==='transparent'&&boardColor&&boardColor!=='white'?'#eef5f1':undefined});
   if (o.type === 'triangle') {
     c.beginPath();
     trianglePoints(o).forEach((p, i) => (i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)));
@@ -390,6 +391,7 @@ function render(showSelection = true) {
     page().objects.length || preview || !$('text-editor').hidden ? 'none' : 'flex';
   $('undo').disabled = !page().undo.length;
   $('redo').disabled = !page().redo.length;
+  globalThis.TutorStudio?.positionTextToolbar();
 }
 function thumbnails() {
   document.dispatchEvent(new Event('lessonchange'));
@@ -558,7 +560,11 @@ function setColor(v) {
   $('stroke-dot').style.background = v;
   document
     .querySelectorAll('#colors button')
-    .forEach((b) => b.classList.toggle('active', b.dataset.color === v));
+    .forEach((b) => {
+      const active = b.dataset.color === v;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', String(active));
+    });
   refreshCursor();
 }
 colors.forEach((v) => {
@@ -1047,7 +1053,6 @@ function commitText() {
   const editorBounds = ed.getBoundingClientRect();
   const boardBounds = canvas.getBoundingClientRect();
   ed.hidden = true;
-  $('text-place').hidden = true;
   if (value) {
     checkpoint();
     const box = {
@@ -1104,12 +1109,6 @@ function openTextBox(p, existing = null) {
   ed.style.color = ed.dataset.color;
   ed.style.background = boardColors[page().boardColor || 'white'];
   ed.classList.toggle('dark-board', page().boardColor !== 'white');
-  const place = $('text-place');
-  place.hidden = false;
-  place.style.left = x * scale + 'px';
-  place.style.top =
-    Math.min(r.height - 32, (y + Math.min(existing?.h || p.h || 180, H - y)) * (r.height / H) + 6) +
-    'px';
   syncTextControls();
   render();
   ed.focus({ preventScroll: true });
@@ -1197,14 +1196,13 @@ document.querySelectorAll('#connector-menu [data-tool]').forEach((button) => {
   button.onclick = () => {
     setTool(button.dataset.tool);
     closeConnectorMenu(true);
-    $('connector-toggle').textContent =
+    if (window.TutorStudio) $('connector-toggle').innerHTML = TutorStudio.connectorMarkup(button.dataset.tool);
+    else $('connector-toggle').textContent =
       button.dataset.tool === 'arrow' ? '\u2197 \u25be' : '\u2571 \u25be';
     $('connector-toggle').title =
       (button.dataset.tool === 'arrow' ? 'Arrow' : 'Line') + ' (choose line or arrow)';
   };
 });
-$('text-place').onpointerdown = (e) => e.preventDefault();
-$('text-place').onclick = () => commitText();
 let textComposing = false;
 function isIMEKey(e) {
   // Some IMEs report the confirming key with isComposing=false and keyCode=229.
@@ -1225,12 +1223,11 @@ $('text-editor').onkeydown = (e) => {
   if (e.key === 'Escape') {
     editingText = null;
     $('text-editor').hidden = true;
-    $('text-place').hidden = true;
     render();
   }
 };
 $('text-editor').onblur = (e) => {
-  if (!e.relatedTarget?.closest('#text-options')) commitText();
+  if (!e.relatedTarget?.closest('#text-options, #studio-color-picker')) commitText();
 };
 function add() {
   end();
@@ -1459,6 +1456,8 @@ function validObject(o) {
       'arrow',
       'graph',
       'geometry',
+      'table',
+      'statistics',
     ].includes(o.type) ||
     typeof o.color !== 'string' ||
     !Number.isFinite(o.width) ||
@@ -1505,6 +1504,7 @@ function validObject(o) {
   if (o.skew !== undefined && (o.skew < 0 || o.skew > 0.9)) return false;
   if (canTransform(o) && o.rotation !== undefined && !Number.isFinite(o.rotation)) return false;
   if (o.type === 'graph' || o.type === 'geometry') return TutorMath.valid(o);
+  if (o.type === 'table' || o.type === 'statistics') return TutorData.valid(o);
   if (o.points)
     return (
       ['pen', 'highlighter'].includes(o.type) &&
@@ -1883,6 +1883,7 @@ function insertMath(o) {
   thumbnails();
   mathDialog.close();
   selected = o;
+  if(o.type==='graph')setTool('move');
   syncSelection();
   render();
   toast('Added. Drag to move; hold Alt to draw over an object.');
@@ -2085,15 +2086,17 @@ function syncSelection() {
     selected && canTransform(selected) && page().objects.includes(selected) && tool !== 'eraser';
   $('object-options').hidden = !visible;
   $('geometry-edit').hidden = !visible || selected.type !== 'geometry';
-  $('image-edit').hidden = !visible || selected.type !== 'image';
+  $('image-edit').hidden = !visible || !['image', 'table', 'statistics'].includes(selected.type);
   $('shape-edit').hidden = !visible || !isEditableShape(selected);
+  globalThis.TutorStudio?.syncInspector();
+  globalThis.TutorDataUI?.sync();
   if (!visible) return;
   $('object-heading').textContent =
     selected.type === 'geometry'
       ? 'SELECTED DIAGRAM'
       : isEditableShape(selected)
         ? 'SELECTED SHAPE'
-        : 'SELECTED IMAGE';
+        : selected.type === 'table' ? 'SELECTED TABLE' : selected.type === 'statistics' ? 'SELECTED STATISTICS' : 'SELECTED IMAGE';
   if (isEditableShape(selected)) {
     $('shape-rotation').value = Math.round((selected.rotation || 0) * 100) / 100;
     $('shape-width').value = Math.round(Math.abs(selected.w));
@@ -2370,7 +2373,7 @@ function resizeCorner(o) {
 }
 function resizeImage(o, old, w) {
   const ratio = old.w / old.h,
-    min = old.type === 'geometry' ? 100 : 40;
+    min = ['geometry', 'table', 'statistics'].includes(old.type) ? 100 : 40;
   w = Math.max(Math.max(min, min * ratio), Math.min(w, W, H * ratio));
   const factor = w / old.w;
   o.x = old.x;
@@ -2513,8 +2516,8 @@ $('apply-diagram-size').onclick = () => {
 
 $('apply-image-size').onclick = () => {
   const w = +$('image-width').value;
-  if (selected?.type !== 'image' || !Number.isFinite(w) || w < 40 || w > W) {
-    toast('Choose an image width from 40 to ' + W + '.');
+  if (!['image', 'table', 'statistics'].includes(selected?.type) || !Number.isFinite(w) || w < (selected.type === 'image' ? 40 : 100) || w > W) {
+    toast('Choose a width from ' + (selected?.type === 'image' ? 40 : 100) + ' to ' + W + '.');
     return;
   }
   checkpoint();
@@ -2674,7 +2677,9 @@ function syncTextControls() {
   const target = selected?.type === 'text' && page().objects.includes(selected) ? selected : null;
   const style = editingText ? textStyle : target || textStyle;
   $('text-edit-selected').hidden = !target || !!editingText;
-  $('text-options').hidden = tool !== 'text' && !target && $('text-editor').hidden;
+  $('text-options').hidden = globalThis.TutorStudio
+    ? !target && $('text-editor').hidden
+    : tool !== 'text' && !target && $('text-editor').hidden;
   $('text-list').value = style.list || 'none';
   $('text-align').value = style.align || 'left';
   $('text-spacing').value = style.spacing || 1.35;
@@ -2683,6 +2688,8 @@ function syncTextControls() {
   $('text-bold').setAttribute('aria-pressed', String(!!style.bold));
   $('text-underline').setAttribute('aria-pressed', String(!!style.underline));
   const ed = $('text-editor');
+  const fontColor = $('text-color');
+  if (fontColor) fontColor.value = (!ed.hidden ? ed.dataset.color : target?.color) || color;
   if (!ed.hidden) {
     const scale = canvas.getBoundingClientRect().width / W;
     ed.style.transformOrigin = 'top left';
@@ -2694,6 +2701,7 @@ function syncTextControls() {
     ed.style.fontWeight = textStyle.bold ? 'bold' : 'normal';
     ed.style.textDecoration = textStyle.underline ? 'underline' : 'none';
   }
+  globalThis.TutorStudio?.positionTextToolbar();
 }
 function formatText(change) {
   const target = selected?.type === 'text' && page().objects.includes(selected) ? selected : null;
@@ -2776,8 +2784,6 @@ function layoutBoard() {
     ed.dataset.displayScale = scale;
     ed.style.left = Number(ed.dataset.x) * scale + 'px';
     ed.style.top = Number(ed.dataset.y) * (h / H) + 'px';
-    $('text-place').style.left = ed.style.left;
-    $('text-place').style.top = Math.min(h - 32, Number(ed.dataset.y) * (h / H) + parseFloat(ed.style.height) * (h / H) / scale + 6) + 'px';
     syncTextControls();
   }
   render();

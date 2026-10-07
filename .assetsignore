@@ -13,6 +13,11 @@
 !pwa.js
 !sw.js
 !style.css
+!studio.css
+!studio.js
+!color-picker.js
+!data-tools.js
+!data-tools-ui.js
 !pwa.css
 !favicon.svg
 !manifest.webmanifest

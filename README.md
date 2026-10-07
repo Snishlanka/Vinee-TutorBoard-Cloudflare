@@ -4,14 +4,34 @@ A browser-based teaching whiteboard for writing, drawing, and explaining lessons
 
 Built with HTML, CSS, and vanilla JavaScript, TutorBoard runs entirely in the browser and is configured for deployment as Cloudflare Workers static assets. No application backend, account, database service, or frontend build step is required.
 
+## v2.0.0 — Teaching studio
+
+- Compact header with a **File** menu for Open lesson, Save lesson, PNG export, lesson PDF export and tutor name. **Present** remains a prominent action.
+- A unified drawing toolbar with consistent SVG icons, ink colors and stroke width. Hover tools to see their names and keyboard shortcuts.
+- **Board settings** groups paper, board color and zoom in a compact menu. The existing controls toggle still hides the whole drawing row for more teaching space.
+- Selecting or editing text reveals a translucent floating formatting toolbar beside the text. It follows movement, scrolling and zoom, and stays inside the viewport. Shapes, images and graphs retain their contextual settings in the studio panel.
+- Font color can be changed in the floating toolbar while editing or after placement; placed changes support Undo/Redo. Selecting a shape, line, image or graph opens a collapsed studio panel after any pointer gesture finishes.
+- Font, fill and custom ink colors use an in-app picker with a color area, hue slider, RGB/hex fields and **✓ Apply**. Changes apply live; Apply confirms the current color and closes the picker.
+- Refined light/dark surfaces, page thumbnails, keyboard focus and responsive controls. Interface themes remain independent of board colors and exported content.
+- Shape settings group appearance, rotation and dimensions, with a fill switch, color swatch/hex value, matching rotation icons and paired width/height fields. Image and diagram settings share this layout.
+- Toolbar icons, buttons and ink swatches scale together with viewport width, using bounded sizes; touch devices use larger drawing-tool targets.
+- Japanese IME candidate keys stay with the text editor instead of triggering board shortcuts.
+- Editable tables and frequency tables with transparent, white or black backgrounds.
+- Statistics charts, smooth cumulative curves, quartile teaching steps and X/Y value reading for both cumulative curves and function graphs.
+- Point coordinates and independent grid controls, with saved teaching settings and export support.
+- Click the **v2.0.0** badge beside the logo for About and What's new. The displayed app version is defined in `studio.js`; editable lesson files retain their existing format version.
+
+`studio.js` enhances the existing controls without cloning their IDs or handlers; `studio.css` contains the new visual styles. Both are included in the published asset allowlist and offline application cache.
+
 ## Features
 
 - **Drawing tools:** smooth chalk/highlighter strokes, a Line / Arrow dropdown with curve controls, rectangles that can be slanted into parallelograms, ellipses, and adjustable triangles. Small on-object handles support resizing, rotation, and hover cursors.
 - **Shape styling and editing:** solid or diagonal-pattern fills, independent fill colors, shape/line Copy and Paste, and selected-object Delete with Undo/Redo. The Eraser dropdown offers point and whole-object modes.
-- **Text boxes and images:** drag to size a Sinhala or English text box with wrapping, bullets/numbering, alignment, spacing, bold/underline, and an optional border. Insert or paste PNG, JPEG, or WebP images; move, resize, and rotate them.
+- **Text boxes and images:** drag to size a Sinhala, English or Japanese IME text box with wrapping, bullets/numbering, alignment, spacing, bold/underline, and an optional border. Insert or paste PNG, JPEG, or WebP images; move, resize, and rotate them.
 - **Pen/touch input:** Auto detect, Pen only for palm rejection, and single-finger drawing modes.
 - **Lesson pages:** create and delete pages, navigate with thumbnails, and choose blank, grid, or ruled paper on white, black, green, or blue boards.
 - **Mathematics:** plot up to four functions on a coordinate grid, insert axes, and add labeled geometry diagrams with adjustable size and rotation.
+- **Statistics and tables:** insert editable tables, grouped-frequency histograms, frequency polygons and cumulative curves. Teach quartiles using step-by-step guides and read corresponding X/Y values on curves and graphs.
 - **Presentation controls:** light and dark interface themes, board zoom, fit-to-window, full screen, and a presentation mode that hides side panels.
 - **Save and export:** download editable lesson JSON, export the current page as PNG, or export all lesson pages as PDF with lesson and tutor details.
 - **Local drafts and offline access:** automatic browser storage, draft restoration, and an installable Progressive Web App (PWA).
@@ -44,6 +64,18 @@ Open the local address printed by Wrangler. There is no `package.json` or `npm r
 4. Open **Graph & axes** or **Geometry diagrams** to insert mathematics content. Drag it directly to position it.
 5. Use **Present** or **Full screen** when teaching or sharing your screen.
 6. Choose **Save lesson** to keep an editable backup. Use **Open lesson** to continue from that JSON file later.
+
+### Teach with tables and statistics
+
+1. Choose **+ Table** for an editable table, or **Mathematics → Statistics** for grouped data. Enter lower boundary, upper boundary and frequency, or paste three tab/comma-separated columns (for example `0,10,4`). Use consecutive class boundaries and non-negative whole-number frequencies.
+2. Select a histogram, frequency polygon, cumulative curve, or all three. Optionally include a frequency table. Set points, grid, curve color and transparent/white/black background before insertion. Select any table or chart and choose **Edit values** to revise it.
+3. Select a cumulative curve. In **Teach from the curve**, choose Q1, Median or Q3. Set **Curve only**, then use **Next step** to reveal the N/4, N/2 or 3N/4 level, go across to the curve, go down to X, and reveal the coordinates. N is total frequency.
+4. Use **Read any value** to enter X and find cumulative Y, or enter cumulative Y and find X. **Show guides** draws the reading lines; **Clear** removes them. Flat cumulative sections show the first matching X.
+5. For a function graph, select the graph and choose a function in **Read any value**. X finds Y; Y lists the visible X intersections. Values outside the graph range are rejected. Numerical inverse lookup can miss very narrow or rapidly oscillating intersections.
+
+Quartiles are estimates from grouped data and follow the displayed curve. Smooth interpolation and straight segments can give different X estimates. Save the lesson to retain chart data, backgrounds, teaching steps and reading guides.
+
+See [CHANGELOG.md](CHANGELOG.md) for the complete v2.0.0 release notes.
 
 | Action            | Output                                                            |
 | ----------------- | ----------------------------------------------------------------- |
@@ -83,7 +115,7 @@ The toolbar retains the last copied shape for this app session, even if the brow
 
 ### Text boxes
 
-Choose **Text box (T)** and drag on the board to set its size (a click uses the default size). Type into the resizable box, then choose **Place text** or press Ctrl+Enter / Cmd+Enter. Formatting applies to the whole box: size, bold, underline, bullets or numbering, left/center/right alignment, and line spacing. The **Border** checkbox shows or hides the box border without changing its layout; the choice is saved and exported. Each entered paragraph is a list item, and long text wraps to the box width. Text can grow vertically beyond the initial box height to avoid hiding content.
+Choose **Text box (T)** and drag on the board to set its size (a click uses the default size). Type into the resizable box; clicking outside the editor and its formatting toolbar places the text automatically. Ctrl+Enter / Cmd+Enter also places it. Formatting applies to the whole box: font color, size, bold, underline, bullets or numbering, left/center/right alignment, and line spacing. The **Border** checkbox shows or hides the box border without changing its layout; the choice is saved and exported. Each entered paragraph is a list item, and long text wraps to the box width. Text can grow vertically beyond the initial box height to avoid hiding content.
 
 Select a text box by clicking it to resize or format it. Choose **Edit text** (also available on touch screens), or double-click the text, to edit its contents. Escape cancels an active edit. The empty-board welcome message is hidden while a text box is being created or edited, and only returns when the board is empty with no pending text.
 
@@ -283,6 +315,22 @@ Use `--check` instead of `--write` to verify formatting without modifying files.
 PDF export uses the bundled `pdf-lib` library. Its license is included in [vendor/pdf-lib-LICENSE.md](vendor/pdf-lib-LICENSE.md). This repository does not currently include a license for the TutorBoard application itself.
 
 ### Browser regression checks
+
+The v2.0.0 studio adds **+ Table** in the action bar and **Mathematics → Statistics** in Studio settings. Tables support editable cells and pasted tab/comma-separated values. Statistics accepts consecutive lower/upper class boundaries and whole-number frequencies, with histogram, frequency polygon and cumulative frequency curve options. Choose **All three charts** and optionally include a frequency table. Unequal-width histograms use frequency density. Select an inserted table/chart and use **Edit values** to change it.
+
+Statistics **Points & grid** settings include point markers, coordinate labels, grid visibility, independent X/Y intervals, subdivisions and opacity. Settings update the preview and are retained in lesson files and local drafts. Move, resize, rotate, undo and export use the board's existing object controls. Run `node tests/browser-data-tools.cjs` for the table/statistics browser checks.
+
+Chart backgrounds can be transparent, solid white or solid black. Cumulative curves use monotone cubic interpolation by default, with an optional straight-segment view. Q1, Median and Q3 markers show the displayed curve's intersections at cumulative frequencies N/4, N/2 and 3N/4, including their (x, y) coordinates and dashed guides. These are grouped-data estimates; smooth and straight curves can give different x values.
+
+Select a cumulative curve to use **Teach from the curve** in Studio settings. Choose Median, Q1 or Q3 and reveal the cumulative frequency level, horizontal guide, vertical guide and final coordinates in separate steps. **Read any value** accepts X to find cumulative frequency Y, or Y to find X, and draws both guides. Flat cumulative sections return the first matching X. The teaching state and reading guides are saved with the chart.
+
+v2.0.0 also includes **Read any value** for function graphs: select a curve, enter X or Y and show axis guides. Y lookup lists multiple visible intersections using a numerical search; very narrow or rapidly oscillating intersections may be missed. Tables, including inserted frequency tables, support transparent, solid white and solid black backgrounds through **Edit values**. Transparent objects adapt their text to the board color.
+
+Function-graph reading coordinates appear directly above each intersection in a contrasting label, including in PNG/PDF exports. Nearby labels shift upward to reduce overlap.
+
+Selecting a statistics chart opens a translucent floating toolbar below the chart. If there is not enough space below, it appears above. Change its background, color, points, coordinate labels, smooth curve and grid visibility directly. Expand **Grid settings** for X/Y intervals, subdivisions and opacity. Use the top-right **× Close** button to hide the toolbar; click/select the chart again to reopen it. Changes support Undo/Redo and saved lessons; **Edit values** opens the full data editor.
+
+Inserting a statistics chart or function graph automatically selects **Move**, so the new object can be positioned immediately. Statistics major and subdivision grid lines share the same thickness and opacity. Statistics retain their original plot proportions; small cells depend on axis intervals, subdivisions and object dimensions.
 
 Run `node --test tests/*.test.cjs` for the unit regressions. `tests/browser-editing.cjs` exercises real browser event handlers, shape controls, text editing/history, welcome-message visibility, and simultaneous pen/touch events. `tests/browser-shapes.cjs` checks native keyboard shape/text copy-paste, fill-pattern rendering, hover cursors, history, JSON save/reopen, and PNG export. Start the local server on port 8765, make Playwright available through `PLAYWRIGHT_MODULE` (or a normal installation), and run `node tests/browser-editing.cjs` and `node tests/browser-shapes.cjs`; both use installed Microsoft Edge. Override `BOARD_URL` if needed. Synthetic input tests do not replace a physical stylus/touch check.
 

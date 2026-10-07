@@ -193,6 +193,20 @@ const TutorMath = (() => {
     const h = w * dy / dx / ratio;
     return { left: o.x + 58, top: o.y + 70, w, h };
   }
+  function readValue(o,axis,value,index=0) {
+    if(!['x','y'].includes(axis)||!Number.isFinite(value)||!Number.isInteger(index)||!o.curves[index])throw Error('Choose a curve and enter a finite value.');
+    if(value<(axis==='x'?o.xmin:o.ymin)||value>(axis==='x'?o.xmax:o.ymax))throw Error('Enter a value inside the displayed axis range.');
+    const f=compile(o.curves[index].expression),result=[],tol=1e-8*Math.max(1,Math.abs(value));
+    const add=x=>{const y=f(x);if(Number.isFinite(y)&&y>=o.ymin&&y<=o.ymax&&Math.abs(y-value)<=tol&&!result.some(p=>Math.abs(p.x-x)<(o.xmax-o.xmin)*1e-7))result.push({x,y});};
+    if(axis==='x'){const y=f(value);if(!Number.isFinite(y)||y<o.ymin||y>o.ymax)throw Error('The curve has no visible finite Y at this X.');return [{x:value,y}];}
+    const count=4096,span=o.xmax-o.xmin;
+    let constant=true;
+    for(let i=0;i<=count;i++){const x=o.xmin+i/count*span,v=f(x)-value;if(!Number.isFinite(v)||Math.abs(v)>tol)constant=false;if(Math.abs(v)<=tol)add(x);if(i===count)continue;let a=x,b=x+span/count,fa=v,fb=f(b)-value;if(!Number.isFinite(fa)||!Number.isFinite(fb)||fa*fb>=0)continue;for(let k=0;k<55;k++){const m=(a+b)/2,fm=f(m)-value;if(!Number.isFinite(fm))break;if(Math.sign(fm)===Math.sign(fa)){a=m;fa=fm;}else b=m;}add((a+b)/2);}
+    // Include tangent intersections that do not change sign.
+    graphFeatures(o).filter(p=>p.label==='Minimum'||p.label==='Maximum').forEach(p=>add(p.x));
+    if(constant)return [{x:o.xmin,y:value,interval:[o.xmin,o.xmax]}];
+    return result.sort((a,b)=>a.x-b.x).slice(0,100);
+  }
   function graph(c, o, bg, aspect = 1) {
     const {left, top, w, h} = plotBounds(o, aspect);
     const X = (x) => left + ((x - o.xmin) / (o.xmax - o.xmin)) * w,
@@ -300,7 +314,24 @@ const TutorMath = (() => {
       }
       c.stroke();
     }
+    if(o.readProbe){try{const points=readValue(o,o.readProbe.axis,o.readProbe.value,o.readProbe.curve);c.strokeStyle=ink;c.fillStyle=ink;c.lineWidth=1.5;c.setLineDash([6,4]);for(const p of points){c.beginPath();c.moveTo(left,Y(p.y));c.lineTo(X(p.x),Y(p.y));c.lineTo(X(p.x),top+h);c.stroke();c.beginPath();c.arc(X(p.x),Y(p.y),5,0,Math.PI*2);c.fill();}c.setLineDash([]);}catch{}}
     c.restore();
+    if(o.readProbe){try{
+      const points=readValue(o,o.readProbe.axis,o.readProbe.value,o.readProbe.curve),placed=[];
+      c.save();c.font='bold 17px "Segoe UI",Arial';c.textAlign='center';c.textBaseline='middle';
+      for(const p of points){
+        const label=`(${+p.x.toPrecision(6)}, ${+p.y.toPrecision(6)})`,width=c.measureText(label).width+16,height=28;
+        const px=Math.max(left+width/2+3,Math.min(left+w-width/2-3,X(p.x)));
+        let py=Math.max(top+height/2+3,Y(p.y)-23);
+        for(let i=0;i<8&&placed.some(r=>Math.abs(r.x-px)<(r.width+width)/2+4&&Math.abs(r.y-py)<height+3);i++)py-=height+4;
+        py=Math.max(top+height/2+3,py);placed.push({x:px,y:py,width});
+        c.fillStyle=bg==='white'?'#fffffff2':'#142c48f2';c.fillRect(px-width/2,py-height/2,width,height);
+        c.strokeStyle=bg==='white'?'#bcc9d9':'#a7c0df';c.lineWidth=1;c.strokeRect(px-width/2,py-height/2,width,height);
+        c.fillStyle=ink;c.fillText(label,px,py);
+      }
+      if(!points.length){c.font='14px "Segoe UI",Arial';c.textAlign='left';c.fillStyle=ink;c.fillText('No visible intersection',left,top+h+48);}
+      c.restore();
+    }catch{}}
     c.font = '18px "Segoe UI",Arial';
     c.textAlign = 'left';
     o.curves.forEach((curve, i) => {
@@ -447,6 +478,7 @@ const TutorMath = (() => {
         typeof o.labels === 'boolean'
       );
     if (o.type === 'graph') {
+      if(o.readProbe&&(!['x','y'].includes(o.readProbe.axis)||!Number.isFinite(o.readProbe.value)||!Number.isInteger(o.readProbe.curve)||o.readProbe.curve<0||o.readProbe.curve>=o.curves?.length))return false;
       for (const [key, lo, hi] of [['xTickStep', o.xmin, o.xmax], ['yTickStep', o.ymin, o.ymax]]) {
         const step = o[key];
         if (step != null && (!Number.isFinite(step) || step <= 0 || (hi - lo) / step > 200)) return false;
@@ -475,5 +507,5 @@ const TutorMath = (() => {
     }
     return false;
   }
-  return { compile, axisStep, ticks, minorTicks, graphFeatures, plotBounds, graph, geometry, valid };
+  return { compile, axisStep, ticks, minorTicks, graphFeatures, readValue, plotBounds, graph, geometry, valid };
 })();

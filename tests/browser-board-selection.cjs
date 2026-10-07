@@ -16,6 +16,8 @@ const assert = require('node:assert/strict');
       await p.mouse.move(b.x + b.width * .4, b.y + b.height * .5, { steps: 10 });
       await p.mouse.up();
       for (const board of ['black', 'green', 'blue', 'white']) {
+        if (await p.locator('#board-settings').getAttribute('open') === null)
+          await p.locator('#board-settings summary').click();
         await p.locator('#board-color').selectOption(board);
         assert.ok(await p.evaluate(() => selected === page().objects[0]));
         assert.equal(await p.locator('#delete-object').isEnabled(), true);

@@ -26,22 +26,25 @@
     <script src="theme.js"></script>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="pwa.css" />
+    <link rel="stylesheet" href="studio.css" />
   </head>
   <body class="pages-hidden">
     <header>
-      <div class="brand"><span class="mark">V</span><strong>Vinee TutorBoard</strong></div>
+      <div class="brand"><span class="mark">V</span><strong>Vinee TutorBoard</strong><button class="version-badge" id="about-open" aria-label="About TutorBoard and what's new"><span data-app-version></span></button></div>
       <div class="lesson-details">
         <input id="title" aria-label="Lesson title" value="Untitled lesson" maxlength="100" />
         <input id="tutor-name" aria-label="Tutor name" placeholder="Tutor name" maxlength="100" />
       </div>
       <div class="top-actions">
+        <details class="studio-menu" id="file-menu"><summary>File <span aria-hidden="true">⌄</span></summary><div class="studio-popover file-actions">
+          <span class="menu-caption">LESSON FILES</span>
+          <button id="open">Open lesson</button><button id="save">Save lesson</button>
+          <span class="menu-caption">EXPORT</span>
+          <button id="export-pdf">Export lesson PDF</button><button id="export">Export page PNG</button>
+        </div></details>
         <button id="theme-toggle" aria-pressed="false" title="Switch to dark theme">
-          Dark theme</button
-        ><button id="open">Open lesson</button><button id="save">Save lesson</button
-        ><button id="export-pdf">Export lesson PDF</button
-        ><button id="export" class="primary">Export page ↗</button
-        ><button id="fullscreen" title="Use your whole screen">Full screen ⛶</button
-        ><button id="focus" title="Hide side panels for screen sharing">Present ⛶</button>
+          Dark theme</button><button id="fullscreen" title="Use your whole screen">Full screen</button>
+        <button id="focus" class="primary" title="Hide side panels for screen sharing">Present</button>
       </div>
     </header>
     <nav class="workspace-controls" aria-label="Board controls">
@@ -256,8 +259,7 @@
               placeholder="Type your Text…"
               aria-label="Text to place on board"
               hidden
-            ></textarea
-            ><button id="text-place" class="primary" hidden>Place text ✓</button>
+            ></textarea>
           </div>
         </div>
         <footer>
@@ -267,7 +269,7 @@
         </footer>
       </section>
       <aside class="tools" id="tools-panel">
-        <div class="section-head">TOOLS</div>
+        <div class="section-head">STUDIO SETTINGS</div>
         <label for="input-mode">Drawing input</label>
         <select id="input-mode" aria-describedby="input-hint">
           <option value="auto">Auto detect</option>
@@ -598,7 +600,11 @@ x^2</textarea>
   <div id="graph-lens" hidden aria-label="Graph magnifier"><canvas id="graph-lens-canvas" width="600" height="600"></canvas><button id="graph-lens-close" aria-label="Close graph magnifier">&#215;</button><output id="graph-lens-point"></output></div>
     <script src="vendor/pdf-lib.min.js"></script>
     <script src="math.js"></script>
+    <script src="data-tools.js"></script>
     <script src="app.js"></script>
+    <script src="studio.js"></script>
+    <script src="color-picker.js"></script>
+    <script src="data-tools-ui.js"></script>
     <script src="board-persistence.js"></script>
     <script src="draft-store.js"></script>
     <script src="pwa.js"></script>

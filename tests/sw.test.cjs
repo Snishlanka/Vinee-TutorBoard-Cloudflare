@@ -53,6 +53,8 @@ test('installation caches the whiteboard application route', async () => {
     w.handlers.install({ waitUntil: (value) => (installed = value) });
     await installed;
     assert.ok(w.added.includes(scope + 'whiteboard.html'));
+    assert.ok(w.added.includes(scope + 'studio.js'));
+    assert.ok(w.added.includes(scope + 'studio.css'));
     assert.ok(!w.added.includes(scope));
   }
 });

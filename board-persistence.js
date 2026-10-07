@@ -57,7 +57,6 @@ window.TutorBoard = {
       typeof data.title === 'string' ? data.title.slice(0, 100) : 'Untitled lesson';
     $('tutor-name').value = typeof data.tutorName === 'string' ? data.tutorName.slice(0, 100) : '';
     $('text-editor').hidden = true;
-    $('text-place').hidden = true;
     images.clear();
     update();
   },

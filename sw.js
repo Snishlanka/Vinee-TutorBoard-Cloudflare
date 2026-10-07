@@ -1,10 +1,15 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = '20261007-text-ime';
+const REVISION = 'v2.0.0-final-statistics-icon';
 const ASSETS = [
   'whiteboard.html',
   'theme.js',
   'style.css',
   'app.js',
+  'studio.js',
+  'color-picker.js',
+  'data-tools.js',
+  'data-tools-ui.js',
+  'studio.css',
   'math.js',
   'pwa.css',
   'board-persistence.js',

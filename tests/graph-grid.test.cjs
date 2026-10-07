@@ -6,6 +6,24 @@ const c = vm.createContext({});
 vm.runInContext(fs.readFileSync('math.js','utf8')+';globalThis.math = TutorMath;',c);
 const m = c.math;
 const graph = {type:'graph',x:0,y:0,w:900,h:650,xmin:-10,xmax:10,ymin:-10,ymax:10,curves:[],width:3};
+test('reading coordinates are drawn above each intersection instead of the graph footer',()=>{
+ const labels=[],ctx={globalAlpha:1,save(){},restore(){},measureText(text){return {width:text.length*8}},fillText(text,x,y){labels.push({text,x,y})}};
+ for(const name of ['fillRect','strokeRect','beginPath','moveTo','lineTo','rect','clip','stroke','fill','arc','setLineDash'])ctx[name]=()=>{};
+ const g={...graph,curves:[{expression:'x^2',color:'#147a4b'}],readProbe:{axis:'y',value:4,curve:0}},bounds=m.plotBounds(g);
+ m.graph(ctx,g,'blue');
+ const coords=labels.filter(p=>p.text==='(-2, 4)'||p.text==='(2, 4)');assert.equal(coords.length,2);
+ const pointY=bounds.top+(g.ymax-4)/(g.ymax-g.ymin)*bounds.h;
+ assert.ok(coords.every(p=>p.y<pointY&&p.y>=bounds.top));
+});
+test('read any value finds multiple roots, tangent roots and rejects asymptotes',()=>{
+ const g={...graph,curves:[{expression:'x^2',color:'#147a4b'}]};
+ assert.equal(m.readValue(g,'x',2)[0].y,4);
+ assert.deepEqual(Array.from(m.readValue(g,'y',4),p=>Math.round(p.x)),[-2,2]);
+ assert.equal(m.readValue(g,'y',0).length,1);
+ assert.equal(m.readValue({...g,curves:[{expression:'1/x',color:'#147a4b'}]},'y',0).length,0);
+ assert.throws(()=>m.readValue(g,'x',11));
+ assert.equal(m.readValue({...g,curves:[{expression:'3',color:'#147a4b'}]},'y',3)[0].interval.length,2);
+});
 test('subdivisions follow axis ticks, including partial and negative intervals',()=>{
  for (const [lo,hi] of [[-10,10],[-1.3,2.7],[0,1],[100,120]]) {
   const major=m.ticks(lo,hi), step=major[1]-major[0];
