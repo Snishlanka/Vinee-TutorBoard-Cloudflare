@@ -4,3 +4,7 @@
 .release-highlights .feature-grid article { min-height: 0; background: linear-gradient(135deg, #ffffff, #eef8f1); }
 .release-highlights .feature-grid h3 { margin-top: 0; }
 @media(max-width:650px) { .release-highlights .feature-grid { grid-template-columns: 1fr; } }
+.landing-faq { padding-top: 15px; padding-bottom: 45px; }
+.landing-faq details { padding: 20px 22px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.landing-faq summary { cursor: pointer; font-weight: 700; color: var(--dark); }
+.landing-faq p { color: #61796d; margin: 14px 0 0; }

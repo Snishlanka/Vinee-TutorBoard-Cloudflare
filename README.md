@@ -38,6 +38,8 @@ Built with HTML, CSS, and vanilla JavaScript, TutorBoard runs entirely in the br
 
 ## Run locally
 
+For indexing setup and post-deployment Google Search Console steps, see [SEO.md](SEO.md).
+
 Use a modern browser and serve the repository over HTTP. Opening `index.html` directly with `file://` does not enable local draft and PWA integration.
 
 If Python 3 is installed, run this from the repository root:
