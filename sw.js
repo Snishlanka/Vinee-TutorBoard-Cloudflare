@@ -1,5 +1,5 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = '20261004-chalk-writing-mode';
+const REVISION = '20261007-text-ime';
 const ASSETS = [
   'whiteboard.html',
   'theme.js',

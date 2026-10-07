@@ -1171,6 +1171,7 @@ document.addEventListener('pointerdown', (e) => {
   if (!e.target.closest('#eraser-picker')) closeEraserMenu();
 });
 document.addEventListener('keydown', (e) => {
+  if (isIMEKey(e)) return;
   if (e.key === 'Escape' && !$('eraser-menu').hidden) {
     e.preventDefault();
     closeEraserMenu(true);
@@ -1204,8 +1205,19 @@ document.querySelectorAll('#connector-menu [data-tool]').forEach((button) => {
 });
 $('text-place').onpointerdown = (e) => e.preventDefault();
 $('text-place').onclick = () => commitText();
+let textComposing = false;
+function isIMEKey(e) {
+  // Some IMEs report the confirming key with isComposing=false and keyCode=229.
+  return textComposing || e.isComposing || e.keyCode === 229;
+}
+$('text-editor').addEventListener('compositionstart', () => {
+  textComposing = true;
+});
+$('text-editor').addEventListener('compositionend', () => {
+  textComposing = false;
+});
 $('text-editor').onkeydown = (e) => {
-  if (e.isComposing) return;
+  if (isIMEKey(e)) return;
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     commitText();
@@ -1797,6 +1809,7 @@ $('delete-object').onclick = deleteSelected;
 
 document.addEventListener('keydown', (e) => {
   if (
+    isIMEKey(e) ||
     ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) ||
     document.activeElement.isContentEditable ||
     document.querySelector('dialog[open]')
@@ -2881,7 +2894,7 @@ canvas.addEventListener('pointerup', e => {
 });
 canvas.addEventListener('pointercancel', () => {graphLensPress = null;});
 $('graph-lens-close').onclick = hideGraphLens;
-document.addEventListener('keydown', e => {if(e.key === 'Escape') hideGraphLens();});
+document.addEventListener('keydown', e => {if(!isIMEKey(e) && e.key === 'Escape') hideGraphLens();});
 document.addEventListener('pointerdown', e => {if(e.target !== canvas && !e.target.closest('#graph-lens')) hideGraphLens();},true);
 window.addEventListener('resize',hideGraphLens);
 boardStage.addEventListener('scroll',hideGraphLens);
