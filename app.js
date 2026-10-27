@@ -177,9 +177,9 @@ function textLayout(o, c) {
   }
   push(); return lines;
 }
-function textBoxHeight(o, c) {
+function textBoxHeight(o, c, surfaceHeight = H) {
   const height = Math.max(o.h || 0, textLayout(o, c).length * textLineHeight(o) + (o.box ? 24 : 0));
-  return o.box ? Math.min(H - o.y, height) : height;
+  return o.box ? Math.min(surfaceHeight - o.y, height) : height;
 }
 function arrowPoints(o) {
   const end = { x: o.x + o.w, y: o.y + o.h };
@@ -201,8 +201,11 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false, 
       eraseLayer.width = W;
       eraseLayer.height = H;
     }
+    const layerWidth = Math.max(W, c.canvas?.width || W), layerHeight = Math.max(H, c.canvas?.height || H);
+    if (eraseLayer.width !== layerWidth) eraseLayer.width = layerWidth;
+    if (eraseLayer.height !== layerHeight) eraseLayer.height = layerHeight;
     const layer = eraseLayer.getContext('2d');
-    layer.clearRect(0, 0, W, H);
+    layer.clearRect(0, 0, layerWidth, layerHeight);
     drawObject(layer, o, boardColor, true, graphAspect);
     layer.save();
     layer.globalCompositeOperation = 'destination-out';
@@ -322,10 +325,10 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false, 
       padding = o.box ? 12 : 0;
     if (o.box && o.border !== false) {
       c.lineWidth = 1.5;
-      c.strokeRect(o.x, o.y, o.w, textBoxHeight(o, c));
+      c.strokeRect(o.x, o.y, o.w, textBoxHeight(o, c, Math.max(H, c.canvas?.height || H)));
     }
     c.save();
-    if (o.box) { c.beginPath(); c.rect(o.x, o.y, o.w, textBoxHeight(o, c)); c.clip(); }
+    if (o.box) { c.beginPath(); c.rect(o.x, o.y, o.w, textBoxHeight(o, c, Math.max(H, c.canvas?.height || H))); c.clip(); }
     layout.forEach((line, i) => {
       const y = o.y + padding + i * textLineHeight(o);
       const available = o.w ? o.w - padding * 2 : line.width;
@@ -407,6 +410,7 @@ function render(showSelection = true) {
   $('undo').disabled = !page().undo.length;
   $('redo').disabled = !page().redo.length;
   globalThis.TutorStudio?.positionTextToolbar();
+  globalThis.TutorPDF?.sync();
 }
 function thumbnails() {
   document.dispatchEvent(new Event('lessonchange'));
@@ -495,7 +499,7 @@ function update() {
   thumbnails();
 }
 // Functional cursor icons use a small SVG with a precise drawing hotspot.
-function toolCursor(t) {
+function toolCursor(t, cursorColor = color) {
   if (t === 'laser') {
     const laser =
       '<circle cx="16" cy="16" r="8" fill="#ffffff" fill-opacity=".9"/>' +
@@ -510,7 +514,7 @@ function toolCursor(t) {
   if (t === 'move') return 'grab';
   if (t === 'text') return 'text';
   if (t !== 'pen' && t !== 'eraser') return 'crosshair';
-  const ink = /^#[0-9a-f]{6}$/i.test(color) ? color : '#ffffff';
+  const ink = /^#[0-9a-f]{6}$/i.test(cursorColor) ? cursorColor : '#ffffff';
   const chalk =
     '<path d="M5 27L8 19L22 4Q24 2 26 4L29 7Q31 9 29 11L14 26Z" fill="' +
     ink +
@@ -613,7 +617,7 @@ function segmentDist(p, a, b) {
     t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
   return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
 }
-function hit(o, p) {
+function hit(o, p, surfaceHeight = H) {
   if (
     o.erasures?.some((m) =>
       m.points.length === 1
@@ -661,7 +665,7 @@ function hit(o, p) {
   if (o.type === 'text') {
     ctx.font = textFont(o);
     w = o.w || Math.max(1, ...textLayout(o, ctx).map((line) => line.width));
-    h = textBoxHeight(o, ctx);
+    h = textBoxHeight(o, ctx, surfaceHeight);
   }
   return (
     p.x >= Math.min(o.x, o.x + w) - pad &&
@@ -670,7 +674,7 @@ function hit(o, p) {
     p.y <= Math.max(o.y, o.y + h) + pad
   );
 }
-function objectBounds(o) {
+function objectBounds(o, surfaceHeight = H) {
   if (o.type === 'graph') {
     const b = graphPlot(o);
     return {x:o.x, y:o.y, right:o.x+b.w+84, bottom:o.y+b.h+114};
@@ -725,7 +729,7 @@ function objectBounds(o) {
   if (o.type === 'text') {
     ctx.font = textFont(o);
     w = o.w || Math.max(1, ...textLayout(o, ctx).map((line) => line.width));
-    h = textBoxHeight(o, ctx);
+    h = textBoxHeight(o, ctx, surfaceHeight);
   }
   return {
     x: Math.min(o.x, o.x + w) - o.width,
@@ -1452,6 +1456,7 @@ $('save').onclick = () => {
           boardHeight: H,
           title: $('title').value,
           tutorName: $('tutor-name').value,
+          loadedPDF: globalThis.TutorPDF?.snapshot() || null,
           pages: pages.map((p) => ({
             background: p.background,
             boardColor: p.boardColor || 'white',
@@ -1466,7 +1471,14 @@ $('save').onclick = () => {
   toast('Lesson downloaded. Open this file to continue later.');
 };
 $('open').onclick = () => $('lesson-file').click();
-function validObject(o) {
+function validObject(o, limits = {width: W, height: H}) {
+  // Array.every passes an index as the second argument; only explicit bounds objects override board limits.
+  if (!limits || typeof limits !== 'object' || !Number.isFinite(limits.width) || !Number.isFinite(limits.height)) limits = {width: W, height: H};
+  if (o?.pdfBook !== undefined) {
+    const b = o.pdfBook;
+    if (o.type !== 'image' || !b || typeof b.data !== 'string' || b.data.length > 139810136 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b.data) || b.data.length % 4 !== 0 || typeof b.name !== 'string' || b.name.length > 200 || !Number.isInteger(b.totalPages) || b.totalPages < 1 || b.totalPages > 2000 || !Number.isInteger(b.pageNumber) || b.pageNumber < 1 || b.pageNumber > b.totalPages) return false;
+    if (b.annotations !== undefined && (!b.annotations || typeof b.annotations !== 'object' || Array.isArray(b.annotations) || Object.entries(b.annotations).some(([n, objects]) => !/^[1-9][0-9]{0,3}$/.test(n) || +n > b.totalPages || !Array.isArray(objects) || objects.length > 1000 || objects.some(a => !a || !['pen','highlighter','line','arrow','rect','circle','triangle','text'].includes(a.type) || !validObject(a, {width:10000,height:10000}))))) return false;
+  }
   if (
     !o ||
     ![
@@ -1547,8 +1559,8 @@ function validObject(o) {
       (o.box === undefined || typeof o.box === 'boolean') &&
       (o.border === undefined || typeof o.border === 'boolean') &&
       (o.box !== true || (Number.isFinite(o.w) && Number.isFinite(o.h))) &&
-      (o.w === undefined || (Number.isFinite(o.w) && o.w >= 40 && o.w <= W)) &&
-      (o.h === undefined || (Number.isFinite(o.h) && o.h >= 20 && o.h <= H)) &&
+      (o.w === undefined || (Number.isFinite(o.w) && o.w >= 40 && o.w <= limits.width)) &&
+      (o.h === undefined || (Number.isFinite(o.h) && o.h >= 20 && o.h <= limits.height)) &&
       (o.list === undefined || ['none', 'bullet', 'number'].includes(o.list)) &&
       (o.align === undefined || ['left', 'center', 'right'].includes(o.align)) &&
       (o.spacing === undefined ||
@@ -1571,14 +1583,18 @@ function validObject(o) {
     );
   return true;
 }
+function validLoadedPDF(book) {
+  return book == null || validObject({type:'image',x:0,y:0,w:1,h:1,color:'#000000',width:1,src:'data:image/png;base64,AA==',pdfBook:book});
+}
 $('lesson-file').onchange = async (e) => {
   const f = e.target.files[0];
   if (!f) return;
   try {
-    if (f.size > 40 * 1024 * 1024) throw Error();
+    if (f.size > 200 * 1024 * 1024) throw Error();
     const data = JSON.parse(await f.text());
     if (
       data.format !== 'tutorboard' ||
+      !validLoadedPDF(data.loadedPDF) ||
       ![1, 2].includes(data.version) ||
       (data.version === 2 && (data.boardWidth !== W || ![900, H].includes(data.boardHeight))) ||
       !Array.isArray(data.pages) ||
@@ -1595,7 +1611,7 @@ $('lesson-file').onchange = async (e) => {
     )
       throw Error();
     if (
-      pages.some((p) => p.objects.length) &&
+      (pages.some((p) => p.objects.length) || globalThis.TutorPDF?.hasBook()) &&
       !confirm(
         'Replace this board with the saved lesson? Save your current lesson first if needed.'
       )
@@ -1612,6 +1628,7 @@ $('lesson-file').onchange = async (e) => {
     $('tutor-name').value = typeof data.tutorName === 'string' ? data.tutorName.slice(0, 100) : '';
     $('title').value =
       typeof data.title === 'string' ? data.title.slice(0, 100) : 'Untitled lesson';
+    globalThis.TutorPDF?.restore(data.loadedPDF, data.pages);
     update();
     toast('Lesson opened.');
   } catch {
@@ -2117,6 +2134,7 @@ function syncSelection() {
   $('shape-edit').hidden = !visible || !isEditableShape(selected);
   globalThis.TutorStudio?.syncInspector();
   globalThis.TutorDataUI?.sync();
+  globalThis.TutorPDF?.sync();
   if (!visible) return;
   $('object-heading').textContent =
     selected.type === 'geometry'
@@ -2140,10 +2158,10 @@ function syncSelection() {
 function handleSize() {
   return (4 * W) / canvas.getBoundingClientRect().width;
 }
-function controlAt(o, p) {
+function controlAt(o, p, size = handleSize(), surfaceHeight = H) {
   let nearest = null,
-    distance = handleSize() * 1.6;
-  for (const h of selectionHandles(o)) {
+    distance = size * 1.6;
+  for (const h of selectionHandles(o, size, surfaceHeight)) {
     const d = Math.hypot(p.x - h.x, p.y - h.y);
     if (d < distance) {
       distance = d;
@@ -2184,15 +2202,15 @@ function updateHoverCursor(p, forceDraw = false) {
       ? hovered.type === 'graph' && insideGraphPlot(hovered, p) ? 'zoom-in' : 'grab'
       : toolCursor(tool);
 }
-function selectionHandles(o) {
+function selectionHandles(o, size = handleSize(), surfaceHeight = H) {
   if (o.type === 'graph') {
-    const b = objectBounds(o);
+    const b = objectBounds(o, surfaceHeight);
     return [[0,0],[1,0],[1,1],[0,1]].map(([u,v]) => ({kind:'corner',u,v,x:b.x+(b.right-b.x)*u,y:b.y+(b.bottom-b.y)*v}));
   }
   if (!canTransform(o) && o.type !== 'text') return [];
   const center = { x: o.x + (o.w || 0) / 2, y: o.y + (o.h || 0) / 2 };
   const world = (p) => rotatePoint(p, center, o.rotation || 0);
-  const gap = handleSize() * 5;
+  const gap = size * 5;
   if (o.type === 'line' || o.type === 'arrow')
     return [
       { ...world(o), kind: 'start' },
@@ -2200,7 +2218,7 @@ function selectionHandles(o) {
       { ...world(connectorPoint(o, 0.5)), kind: 'bend' },
     ];
   const b =
-    o.type === 'text' ? objectBounds(o) : { x: o.x, y: o.y, right: o.x + o.w, bottom: o.y + o.h };
+    o.type === 'text' ? objectBounds(o, surfaceHeight) : { x: o.x, y: o.y, right: o.x + o.w, bottom: o.y + o.h };
   const handles = [
     [0, 0],
     [1, 0],
@@ -2218,47 +2236,47 @@ function selectionHandles(o) {
     handles.unshift({
       ...world({
         x: o.x + o.w * (o.skew ?? (o.type === 'rect' ? 0 : 0.25)),
-        y: o.y + Math.sign(o.h || 1) * handleSize() * 2.5,
+        y: o.y + Math.sign(o.h || 1) * size * 2.5,
       }),
       kind: 'skew',
     });
   if (o.type === 'triangle') handles.unshift({ ...world(trianglePoints(o)[0]), kind: 'apex' });
   return handles;
 }
-function drawSelection() {
+function drawSelection(c = ctx, object = selected, size = handleSize(), surfaceHeight = H) {
   // Keep touch targets generous while making the visible handles unobtrusive.
-  const radius = handleSize() / 2;
-  ctx.save();
-  ctx.strokeStyle = '#16834a';
-  ctx.lineWidth = radius / 3;
-  ctx.setLineDash([]);
-  for (const h of selectionHandles(selected)) {
+  const radius = size / 2;
+  c.save();
+  c.strokeStyle = '#16834a';
+  c.lineWidth = radius / 3;
+  c.setLineDash([]);
+  for (const h of selectionHandles(object, size, surfaceHeight)) {
     if (h.kind === 'rotate') {
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(h.x, h.y, handleSize() * 1.75, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#16834a';
-      ctx.font = handleSize() * 2.5 + 'px \"Segoe UI Symbol\",sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('\u21bb', h.x, h.y);
+      c.fillStyle = '#ffffff';
+      c.beginPath();
+      c.arc(h.x, h.y, size * 1.75, 0, Math.PI * 2);
+      c.fill();
+      c.fillStyle = '#16834a';
+      c.font = size * 2.5 + 'px \"Segoe UI Symbol\",sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText('\u21bb', h.x, h.y);
       continue;
     }
-    ctx.fillStyle = ['skew', 'bend', 'apex'].includes(h.kind)
+    c.fillStyle = ['skew', 'bend', 'apex'].includes(h.kind)
       ? '#fbbf24'
       : ['start', 'end'].includes(h.kind)
         ? '#ffffff66'
         : '#ffffff';
-    ctx.beginPath();
-    if (['rotate', 'bend', 'apex'].includes(h.kind)) ctx.arc(h.x, h.y, radius, 0, Math.PI * 2);
-    else ctx.rect(h.x - radius, h.y - radius, radius * 2, radius * 2);
-    ctx.fill();
-    ctx.stroke();
+    c.beginPath();
+    if (['rotate', 'bend', 'apex'].includes(h.kind)) c.arc(h.x, h.y, radius, 0, Math.PI * 2);
+    else c.rect(h.x - radius, h.y - radius, radius * 2, radius * 2);
+    c.fill();
+    c.stroke();
   }
-  ctx.restore();
+  c.restore();
 }
-function dragControl(g, p, snap) {
+function dragControl(g, p, snap, bounds = {width: W, height: H}) {
   const o = g.target,
     old = g.original,
     h = g.handle;
@@ -2315,18 +2333,18 @@ function dragControl(g, p, snap) {
       o.bendY = 0;
     }
   } else if (o.type === 'text') {
-    const bounds = objectBounds(old),
+    const bounds = objectBounds(old, bounds.height),
       anchor = { x: h.u ? old.x : bounds.right, y: h.v ? old.y : bounds.bottom };
-    o.w = Math.max(80, Math.min(W, Math.abs(p.x - anchor.x)));
-    o.h = Math.max(40, Math.min(H, Math.abs(p.y - anchor.y)));
+    o.w = Math.max(80, Math.min(bounds.width, Math.abs(p.x - anchor.x)));
+    o.h = Math.max(40, Math.min(bounds.height, Math.abs(p.y - anchor.y)));
     o.x = h.u ? anchor.x : anchor.x - o.w;
     o.y = h.v ? anchor.y : anchor.y - o.h;
   } else if (o.type === 'geometry' || o.type === 'image') {
     // Existing diagrams preserve their aspect ratio from the opposite corner.
-    resizeFromCorner(o, old, p, h, true);
-  } else resizeFromCorner(o, old, p, h, snap);
+    resizeFromCorner(o, old, p, h, true, bounds);
+  } else resizeFromCorner(o, old, p, h, snap, bounds);
 }
-function resizeFromCorner(o, old, p, h, proportional) {
+function resizeFromCorner(o, old, p, h, proportional, bounds = {width: W, height: H}) {
   const center = { x: old.x + old.w / 2, y: old.y + old.h / 2 };
   const anchor = rotatePoint(
     { x: old.x + (1 - h.u) * old.w, y: old.y + (1 - h.v) * old.h },
@@ -2338,8 +2356,8 @@ function resizeFromCorner(o, old, p, h, proportional) {
     { x: 0, y: 0 },
     -(old.rotation || 0)
   );
-  let w = Math.max(10, Math.min(W, Math.abs(delta.x))),
-    height = Math.max(10, Math.min(H, Math.abs(delta.y)));
+  let w = Math.max(10, Math.min(bounds.width, Math.abs(delta.x))),
+    height = Math.max(10, Math.min(bounds.height, Math.abs(delta.y)));
   if (proportional) {
     const scale = Math.min(w / (Math.abs(old.w) || 1), height / (Math.abs(old.h) || 1));
     w = Math.abs(old.w) * scale;
@@ -2563,7 +2581,8 @@ $('export-pdf').onclick = async () => {
     ),
     name = filename(),
     lessonTitle = $('title').value.trim() || 'Untitled lesson',
-    tutorName = $('tutor-name').value.trim();
+    tutorName = $('tutor-name').value.trim(),
+    pdfBookSnapshot = globalThis.TutorPDF?.snapshot();
   button.disabled = true;
   button.textContent = 'Preparing PDF…';
   try {
@@ -2676,14 +2695,21 @@ $('export-pdf').onclick = async () => {
     }
 
     const bytes = await pdf.save();
-    if (window.tutorDesktop?.savePdf) {
-      const result = await window.tutorDesktop.savePdf(bytes, name);
-      if (result.canceled) {
-        toast('PDF export canceled.');
-        return;
-      }
-    } else download(new Blob([bytes], { type: 'application/pdf' }), name + '.pdf');
-    toast('All ' + snapshot.length + ' lesson pages exported as PDF.');
+    if (pdfBookSnapshot) {
+      const bookPDF=await PDFLib.PDFDocument.create();bookPDF.setTitle(pdfBookSnapshot.name.replace(/\.pdf$/i,''));bookPDF.setCreator('Vinee TutorBoard');
+      const bookPageCount=await globalThis.TutorPDF.appendToExport(bookPDF,pdfBookSnapshot,(n,total)=>{button.textContent='Preparing book '+n+' / '+total;});
+      const bookBytes=await bookPDF.save();
+      let bookName=(pdfBookSnapshot.name.replace(/\.pdf$/i,'').replace(/[<>:"/\\|?*\x00-\x1f]/g,'').slice(0,100)||'pdf-book')+'-annotated.pdf';
+      if(bookName===name+'.pdf')bookName='book-'+bookName;
+      globalThis.TutorPDF.offerDownloads({bytes,name:name+'.pdf',pages:snapshot.length},{bytes:bookBytes,name:bookName,pages:bookPageCount});
+      toast('Your lesson and annotated book are ready as two separate PDFs.');
+    } else if (window.tutorDesktop?.savePdf) {
+      const result=await window.tutorDesktop.savePdf(bytes,name);
+      if(result.canceled){toast('PDF export canceled.');return;}
+      toast(snapshot.length+' board pages exported as PDF.');
+    } else {
+      download(new Blob([bytes],{type:'application/pdf'}),name+'.pdf');toast(snapshot.length+' board pages exported as PDF.');
+    }
   } catch (error) {
     console.error('PDF export failed', error);
     $('pdf-error-message').textContent = error.message || 'Please try again.';
@@ -3046,25 +3072,21 @@ function addLaserPoint(p) {
   else trail.push({...p,time:now});
   if (laserFrame === null) laserFrame=requestAnimationFrame(paintLaser);
 }
+function renderLaserTrails(c, trails, now, scale, liveTrail = null) {
+  c.clearRect(0,0,c.canvas?.width || W,c.canvas?.height || H);
+  c.save();c.lineCap='round';c.lineJoin='round';c.strokeStyle='#ff253e';c.fillStyle='#ff253e';
+  c.lineWidth=3*scale;c.shadowColor='#ff253e';c.shadowBlur=8*scale;
+  trails=trails.filter(trail=>{while(trail.length&&now-trail[0].time>1100)trail.shift();return trail.length||trail===liveTrail;});
+  for(const trail of trails)for(let i=0;i<trail.length;i++){
+    const p=trail[i];c.globalAlpha=Math.max(0,1-(now-p.time)/1100);
+    if(i){c.beginPath();c.moveTo(trail[i-1].x,trail[i-1].y);c.lineTo(p.x,p.y);c.stroke();}
+    else{c.beginPath();c.arc(p.x,p.y,1.5*scale,0,Math.PI*2);c.fill();}
+  }
+  c.restore();return trails;
+}
 function paintLaser(now) {
   laserFrame=null;
-  const c=$('laser-overlay').getContext('2d');
-  c.clearRect(0,0,W,H);
-  const scale=W/canvas.getBoundingClientRect().width;
-  c.lineCap='round';c.lineJoin='round';c.strokeStyle='#ff253e';c.fillStyle='#ff253e';
-  c.lineWidth=3*scale;c.shadowColor='#ff253e';c.shadowBlur=8*scale;
-  laserTrails=laserTrails.filter(trail=>{
-    while(trail.length && now-trail[0].time>1100)trail.shift();
-    return trail.length || gesture?.trail===trail;
-  });
-  for(const trail of laserTrails){
-    for(let i=0;i<trail.length;i++){
-      const p=trail[i];c.globalAlpha=Math.max(0,1-(now-p.time)/1100);
-      if(i){c.beginPath();c.moveTo(trail[i-1].x,trail[i-1].y);c.lineTo(p.x,p.y);c.stroke();}
-      else {c.beginPath();c.arc(p.x,p.y,1.5*scale,0,Math.PI*2);c.fill();}
-    }
-  }
-  c.globalAlpha=1;c.shadowBlur=0;
+  laserTrails=renderLaserTrails($('laser-overlay').getContext('2d'),laserTrails,now,W/canvas.getBoundingClientRect().width,gesture?.trail);
   if(laserTrails.some(trail=>trail.length))laserFrame=requestAnimationFrame(paintLaser);
 }
 

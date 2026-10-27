@@ -10,7 +10,7 @@ Object.defineProperty(richEditor, 'value', {
     richEditor.textContent = value;
   },
 });
-function editorRuns() {
+function editorRuns(editor = richEditor) {
   const runs = [];
   function visit(node, style) {
     if (node.nodeType === 3) {
@@ -32,18 +32,18 @@ function editorRuns() {
     }
     if (
       ['DIV', 'P'].includes(node.nodeName) &&
-      node !== richEditor &&
+      node !== editor &&
       runs.length &&
       !runs.at(-1).text.endsWith('\n')
     )
       runs.push({ text: '\n', ...next });
     for (const child of node.childNodes) visit(child, next);
   }
-  visit(richEditor, { bold: false, underline: false });
+  visit(editor, { bold: false, underline: false });
   return runs;
 }
-function setEditorRuns(runs) {
-  richEditor.replaceChildren(
+function setEditorRuns(runs, editor = richEditor) {
+  editor.replaceChildren(
     ...runs.map((run) => {
       const span = document.createElement('span');
       span.textContent = run.text;
@@ -64,45 +64,85 @@ function sliceTextRuns(runs, start, end = Infinity) {
 let pendingTextRuns = [];
 function fitTextEditor() {
   if (richEditor.hidden || typeof textLayout !== 'function') return;
-  const scale = canvas.getBoundingClientRect().width / W;
-  const maxHeight = H - Number(richEditor.dataset.y);
+  const scale = canvas.getBoundingClientRect().width / W,
+    maxHeight = H - Number(richEditor.dataset.y);
   const boxWidth = Math.min(
     W - Number(richEditor.dataset.x),
     parseFloat(richEditor.style.width) / scale
   );
-  const runs = editorRuns(),
-    text = runs.map((r) => r.text).join('');
-  const object = { ...textStyle, box: true, w: boxWidth, text, runs };
-  const height = textLayout(object, ctx).length * textLineHeight(object) + 64;
+  const visibleRuns = editorRuns(),
+    visibleText = visibleRuns.map((r) => r.text).join('');
+  const allRuns = [...visibleRuns, ...pendingTextRuns],
+    text = allRuns.map((r) => r.text).join('');
+  const object = { ...textStyle, box: true, w: boxWidth, text, runs: allRuns };
+  const contentHeight = textLayout(object, ctx).length * textLineHeight(object) + 24;
+  let count = text.length;
+  if (contentHeight > maxHeight || text.length > 10000) {
+    let lo = 0,
+      hi = Math.min(10000, text.length);
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2),
+        part = { ...object, text: text.slice(0, mid), runs: sliceTextRuns(allRuns, 0, mid) };
+      if (textLayout(part, ctx).length * textLineHeight(part) + 64 <= maxHeight) lo = mid;
+      else hi = mid - 1;
+    }
+    count = lo;
+  }
+  const shownRuns = sliceTextRuns(allRuns, 0, count),
+    shownText = text.slice(0, count);
+  pendingTextRuns = sliceTextRuns(allRuns, count);
+  if (shownText !== visibleText) {
+    const selection = getSelection();
+    let start = count,
+      end = count;
+    if (
+      selection.rangeCount &&
+      richEditor.contains(selection.getRangeAt(0).commonAncestorContainer)
+    ) {
+      const selected = selection.getRangeAt(0),
+        prefix = document.createRange();
+      prefix.selectNodeContents(richEditor);
+      prefix.setEnd(selected.startContainer, selected.startOffset);
+      start = Math.min(count, prefix.toString().length);
+      prefix.setEnd(selected.endContainer, selected.endOffset);
+      end = Math.min(count, prefix.toString().length);
+    }
+    setEditorRuns(shownRuns);
+    const locate = (offset) => {
+      const walker = document.createTreeWalker(richEditor, NodeFilter.SHOW_TEXT);
+      let node,
+        last = null;
+      while ((node = walker.nextNode())) {
+        last = node;
+        if (offset <= node.length) return [node, offset];
+        offset -= node.length;
+      }
+      return last ? [last, last.length] : [richEditor, 0];
+    };
+    const range = document.createRange(),
+      left = locate(start),
+      right = locate(end);
+    range.setStart(...left);
+    range.setEnd(...right);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+  const shownObject = { ...object, text: shownText, runs: shownRuns };
+  const height =
+    textLayout(shownObject, ctx).length * textLineHeight(shownObject) +
+    (pendingTextRuns.length ? 64 : 24);
   richEditor.style.maxHeight = maxHeight * scale + 'px';
   richEditor.style.maxWidth = (W - Number(richEditor.dataset.x)) * scale + 'px';
   richEditor.style.height =
     Math.min(maxHeight, Math.max(parseFloat(richEditor.style.height) / scale, height)) * scale +
     'px';
-  if ((height > maxHeight || text.length > 10000) && text.length) {
-    let lo = 0,
-      hi = Math.min(10000, text.length);
-    while (lo < hi) {
-      const mid = Math.ceil((lo + hi) / 2);
-      const part = { ...object, text: text.slice(0, mid), runs: sliceTextRuns(runs, 0, mid) };
-      if (textLayout(part, ctx).length * textLineHeight(part) + 64 <= maxHeight) lo = mid;
-      else hi = mid - 1;
-    }
-    pendingTextRuns = [...pendingTextRuns, ...sliceTextRuns(runs, lo)];
-    setEditorRuns(sliceTextRuns(runs, 0, lo));
-    const range = document.createRange();
-    range.selectNodeContents(richEditor);
-    range.collapse(false);
-    const selection = window.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
+  richEditor.style.paddingBottom = (pendingTextRuns.length ? 40 : 12) * scale + 'px';
   richEditor.scrollTop = 0;
   positionTextNext();
 }
 function positionTextNext() {
   const button = document.getElementById('text-next-page');
-  button.hidden = richEditor.hidden;
+  button.hidden = richEditor.hidden || pendingTextRuns.length === 0;
   button.style.left =
     parseFloat(richEditor.style.left) +
     richEditor.offsetWidth -

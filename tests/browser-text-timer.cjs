@@ -64,10 +64,27 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const snapshot = await p.evaluate(() => TutorBoard.snapshot());
     assert.equal(snapshot.lesson.pages[0].objects.length, 1);
     assert.equal(snapshot.lesson.pages[0].objects[0].runs[0].bold, true);
-    await p.locator('#text-next-page').click();
+    assert.equal(
+      await p.locator('#text-next-page').isVisible(),
+      false,
+      'Next page is hidden while normal text fits'
+    );
+    await p.locator('#text-editor').press('Control+Enter');
+    await p.locator('#quick-add').click();
+    await p.evaluate(() => openTextBox({ x: 40, y: 40, w: 700, h: 180 }));
     assert.equal(await p.evaluate(() => pages.length), 2);
     await p.locator('#text-editor').fill('A long exercise line. '.repeat(1500));
     assert.equal(await p.evaluate(() => pendingTextRuns.length > 0), true);
+    assert.equal(
+      await p.locator('#text-next-page').isVisible(),
+      true,
+      'Next page appears only when text overflows'
+    );
+    const originalStream = await p.evaluate(
+      () =>
+        document.getElementById('text-editor').value + pendingTextRuns.map((r) => r.text).join('')
+    );
+    assert.equal(originalStream, 'A long exercise line. '.repeat(1500));
     assert.equal(
       await p.evaluate(() => {
         const e = document.getElementById('text-editor'),

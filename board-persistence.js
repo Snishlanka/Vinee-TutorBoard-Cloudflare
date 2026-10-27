@@ -40,6 +40,7 @@ window.TutorBoard = {
       });
     }
     lesson.pages.splice(index + 1, 0, ...overflowSnapshotPages());
+    globalThis.TutorPDF?.patchSnapshot(lesson);
     return { lesson, activePage: index };
   },
   restore(snapshot) {
@@ -47,6 +48,7 @@ window.TutorBoard = {
     if (
       !data ||
       data.format !== 'tutorboard' ||
+      !validLoadedPDF(data.loadedPDF) ||
       data.version !== 2 ||
       data.boardWidth !== W ||
       data.boardHeight !== H ||
@@ -71,13 +73,15 @@ window.TutorBoard = {
     $('tutor-name').value = typeof data.tutorName === 'string' ? data.tutorName.slice(0, 100) : '';
     $('text-editor').hidden = true;
     images.clear();
+    globalThis.TutorPDF?.restore(data.loadedPDF, data.pages);
     update();
   },
   commit() {
+    globalThis.TutorPDF?.cancelDrawing();
     end();
     commitText();
   },
   isInteracting() {
-    return !!gesture;
+    return !!gesture || !!globalThis.TutorPDF?.isInteracting();
   },
 };

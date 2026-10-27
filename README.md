@@ -309,7 +309,7 @@ Use `--check` instead of `--write` to verify formatting without modifying files.
 | Offline access is unavailable            | Use HTTPS or localhost, open online first, and wait for **Ready offline**.                                        |
 | Changes do not appear after deployment   | Check the service worker revision, choose **Check updates**, then close all app windows and reopen.               |
 | Autosave fails                           | Download the lesson with **Save lesson** and check whether browser storage is available or full.                  |
-| A lesson file will not open              | Use a TutorBoard JSON export. The importer accepts files up to 40 MiB and 100 pages and validates their contents. |
+| A lesson file will not open              | Use a TutorBoard JSON export. The importer accepts files up to 200 MiB and 100 pages and validates their contents. |
 | A new asset returns 404 after deployment | Ensure the file is included in `.assetsignore`.                                                                   |
 
 ## Third-party software
@@ -357,3 +357,35 @@ Text editing uses a contenteditable textbox with a plain-text `value` interface.
 The text formatting controls reserve a row above the board while text is selected or being edited. They never overlay lower typing lines, including for a full-height box and narrow screens. The board refits below that row.
 
 Exercise timer UI: quick 1/3/5/10-minute presets, a live countdown preview, and a compact running status chip. Start/Resume closes the setup dropdown automatically; reopen it to Pause or Reset. Completion opens an accessible Time’s up dialog with Back to the board and Run it again. Escape dismisses the dialog. The countdown uses a wall-clock deadline, including after background-tab throttling.
+
+
+## PDF Book View and separate PDF exports (v2.2.0)
+
+**PDF book** opens the loaded textbook. If no book is loaded, choose a local PDF (up to 100 MiB / 2,000 pages). The reader's **Change PDF** action loads another book. Reading, page turns and PDF notes do not place the PDF on the board. Older lessons with placed PDF images remain readable, and their metadata can seed the reader.
+
+The reader uses the original board toolbar layout: Chalk, Highlighter, Text, Line/Arrow dropdown, shapes, Laser, Move, the same ink swatches, Custom color and stroke controls. Point/whole-mark eraser modes and per-PDF-page Undo/Redo are available. Notes follow each PDF page. PDF pages use a plain reading surface without board-background settings or a dotted grid. **Back to board** keeps the loaded book and its notes available through PDF book.
+
+Use **− / Fit page / Fit to window / +** to zoom from fit size to 400%. Fit page shows the whole page; Fit to window fills the available reading width while preserving page proportions, with vertical scrolling when needed. At higher zoom, use Move on a blank part of the page to pan; clicking a mark moves that mark instead. Drawing and cropping retain their PDF coordinates while zoomed. **Crop to board** opens the crop mode. Drag a rectangle or adjust the percentage fields, then **Insert crop on board** adds that region (including PDF notes) as a movable image. The PDF stays in its reader.
+
+**Save lesson** and local drafts include board pages plus the original loaded PDF, current PDF page and all PDF notes. **Export lesson PDF** prepares two separate files when a book is loaded: a lesson PDF containing only board pages, and an annotated book PDF containing every book page with its notes. The export dialog provides **Download lesson** and **Download book** buttons, so each download is a direct user action. Without a loaded book, the lesson PDF downloads as before. Unmarked PDF pages preserve their original vector content where possible; marked pages are composed with their notes at the reader's render resolution. PNG export remains the single visible board page. Lesson import accepts up to 200 MiB for large embedded PDFs.
+
+Lesson format stays version 2. The lesson-level `loadedPDF` property stores validated data/name/totalPages/pageNumber/annotations; it is separate from `pages[].objects`. `pdf-tools.js` owns library state, reader navigation, crop, zoom, full screen, snapshots and separate PDF exports. `pdf-teaching.js` clones the board toolbar with distinct IDs and independent drawing handlers; it uses shared `drawObject()` rendering. PDF point-erasure layers support portrait page dimensions. Do not put new PDF book objects into board history; only crops belong there.
+
+PDF.js 6.4.299 ([official release](https://github.com/mozilla/pdf.js/releases/tag/v6.4.299)) is bundled as classic IIFE scripts in `vendor/pdfjs/`, along with its worker, fonts, CMaps, decoder fallbacks and licenses. A dedicated classic Worker is preferred, with a preloaded main-thread worker-handler fallback for restricted previews. Explicit absolute resource URLs and classic script loading avoid about:blank/module/MIME issues. WebAssembly stays disabled under the existing CSP. PDFs are processed locally and work after Ready offline; unlock password-protected PDFs before loading them.
+
+Run `node --test tests/*.test.cjs` and `node tests/browser-pdf-tools.cjs` with Playwright in `PLAYWRIGHT_MODULE`. Browser checks cover reader-only loading/reopening, toolbar parity, zoom, full screen/back, crop-only board objects, save/reopen, separate annotated PDF exports and mobile layout. Optional flags: `PDF_CROSS_ORIGIN_SCRIPT=1`, `PDF_CLASSIC_PREVIEW=1`, `PDF_LARGE_CHECK=1` (32 MiB PDF and lesson over 40 MiB), or `PDF_OFFLINE_CHECK=1`.
+
+
+PDF/board tool parity (v2.2.0): PDF Chalk uses the same ink-colored chalk cursor, logical stroke widths and Shift-to-straight-line behavior as the board. Laser uses the same 1.1-second fading trail renderer and is excluded from saved notes/exports. Text is a drag-to-size editable box, with double-click/Edit text reopening, selected-text Bold/Underline (Ctrl/Cmd+B/U), font size/color, lists, alignment, spacing and border controls; Ctrl/Cmd+Enter commits and Escape cancels. PDF text controls reserve their own row above the reader.
+
+PDF shapes use the board's shared selectionHandles/controlAt/dragControl/resizeShape helpers: corner resizing, Shift proportions, rotation, line endpoints/bend, rectangle skew and triangle apex. The selected-shape panel provides the same fill/pattern, rotation and numeric width/height controls. `pdf-editing.js` supplies the PDF text and shape editing UI; `text-timer.js` rich-text serializers accept an editor argument. Surface-aware bounds keep portrait PDF text valid without changing board text limits. A Crop icon is provided only in the PDF toolbar and uses a crosshair. It extracts the selected PDF region to the board; the board toolbar has no new Crop tool.
+
+
+Compact PDF reader defaults (v2.2.0): books open with Laser and Fit to window selected. Right-button dragging temporarily pans the PDF without changing the selected tool or moving notes. Ctrl/Cmd+wheel zooms around the pointer from 25% to 400%; Fit page and Fit to window reset the zoom. Filename, page navigation and zoom share one compact header, with the drawing tools in a second row. The shared RGB/hex color picker also works inside the full-screen reader. Reader text, shape controls and PDF-only Crop remain contextual so they do not reserve space while unused.
+
+PDF Book View navigation: Previous is at the lower left and Next at the lower right, with the current page/jump field centered. The bottom row reserves its own space so page controls never cover PDF text. All unreleased PDF changes are consolidated into v2.2.0.
+
+
+Final release: **v2.2.0 - PDF Book View**. The reader starts with Laser and Fit to window, uses right-drag to pan and Ctrl/Cmd+wheel to zoom, and keeps its header/tools compact. Previous/Next occupy the lower left/right of a reserved footer; the page/jump field is centered. Save lesson remains one editable JSON containing the board, loaded PDF and notes. PDF export produces two independent PDFs through the ready-to-download dialog. PNG export still saves only the visible board page. Deployment is performed by the user after reviewing this release.
+
+Board text UI: Next page is hidden while the text fits. It appears only when there is overflow to continue; ordinary text boxes do not reserve extra button padding. Reflow preserves the complete text stream, including pending overflow.

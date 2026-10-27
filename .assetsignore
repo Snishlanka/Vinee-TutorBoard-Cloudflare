@@ -29,3 +29,11 @@
 !vendor/pdf-lib-LICENSE.md
 
 !text-timer.js
+
+!pdf-tools.js
+!vendor/pdfjs/
+!vendor/pdfjs/**
+
+!pdf-teaching.js
+
+!pdf-editing.js

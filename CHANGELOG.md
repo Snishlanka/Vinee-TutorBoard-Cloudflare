@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.2.0 — PDF Book View
+
+- PDF book opens the loaded book, or chooses a local PDF when none is loaded; Change PDF replaces it.
+- Dedicated plain PDF reader with full screen/back, compact header/tools and bottom-left Previous / bottom-right Next navigation.
+- Laser and Fit to window defaults; right-drag panning and pointer-anchored Ctrl/Cmd+wheel zoom (25–400%).
+- Board-equivalent chalk cursors, fading laser trails, rich text boxes, shape handles, fill/rotation/size controls, erasers and shared RGB/hex picker.
+- Text-box Next page appears only when overflow needs continuation, with less padding for normal text.
+- A crosshair Crop tool only in the PDF toolbar; only selected crops become board images.
+- Lesson JSON and local drafts include the original loaded PDF and all page-specific notes.
+- PDF export produces two files: the lesson/board PDF and a separate annotated book PDF, with individual download actions.
+- Classic renderer/worker bundles with a main-thread fallback support restricted previews; runtime assets and license notices are bundled for offline use.
+- PDFs up to 100 MiB and lesson JSON imports up to 200 MiB; large-file save/reopen, tool parity, mobile/full-screen and offline paths verified.
+
 ## v2.1.1 — Exercise timer polish
 
 - Redesigned countdown chip and setup panel with quick durations and live preview.
