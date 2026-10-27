@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.1.1 — Exercise timer polish
+
+- Redesigned countdown chip and setup panel with quick durations and live preview.
+- Starting or resuming automatically closes the dropdown.
+- Designed Time’s up dialog with return-to-board and repeat-exercise actions.
+- Keyboard dismissal, theme support and reduced-motion support.
+
+
+## v2.1.0 — Text formatting and exercise timer
+
+- Ctrl/Cmd+B and Ctrl/Cmd+U format selected text; mixed formatting survives saving and exports.
+- Formatting controls dock above the board without obscuring lower typing lines.
+- Board-bounded text editing without internal scrolling and an in-box Next page button.
+- Top-right countdown for timed exercises with pause, resume, reset and time-up status.
+- Updated About/home release notes and offline cache.
+
+
 ## v2.0.0 — Teaching studio
 
 ### Workspace and styling

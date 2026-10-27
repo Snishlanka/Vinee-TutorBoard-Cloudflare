@@ -17,16 +17,29 @@ window.TutorBoard = {
     };
     if (preview) lesson.pages[index].objects.push(clone(preview));
     const ed = $('text-editor');
-    if (!ed.hidden && ed.value.trim())
+    if (!ed.hidden && ed.value.trim()) {
+      if (editingText) lesson.pages[index].objects.splice(page().objects.indexOf(editingText), 1);
       lesson.pages[index].objects.push({
         type: 'text',
-        text: ed.value.trim(),
+        text: ed.value,
+        runs: editorRuns(),
+        box: true,
+        w: Math.max(
+          40,
+          Math.min(W - +ed.dataset.x, (ed.offsetWidth * W) / canvas.getBoundingClientRect().width)
+        ),
+        h: Math.max(
+          20,
+          Math.min(H - +ed.dataset.y, (ed.offsetHeight * W) / canvas.getBoundingClientRect().width)
+        ),
         x: +ed.dataset.x,
         y: +ed.dataset.y,
         color: ed.dataset.color || color,
         width,
         ...textStyle,
       });
+    }
+    lesson.pages.splice(index + 1, 0, ...overflowSnapshotPages());
     return { lesson, activePage: index };
   },
   restore(snapshot) {

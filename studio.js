@@ -1,6 +1,6 @@
 // Presentation layer: keep the existing editor controls and their event handlers.
 (() => {
-  const VERSION = '2.0.0';
+  const VERSION = '2.1.1';
   const icons = {
     pen: '<path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5M4 15l5 5"/>',
     eraser: '<path d="m15 3 6 6-11 12H6l-4-4Z"/><path d="m7 12 7 7M10 21h12"/>',
@@ -64,23 +64,9 @@
       const target = selected?.type === 'text' && page().objects.includes(selected) ? selected : null;
       options.hidden = editor.hidden && !target;
       if (options.hidden) return;
-      const surface = canvas.getBoundingClientRect();
-      const stage = boardStage.getBoundingClientRect();
-      const anchor = !editor.hidden ? editor.getBoundingClientRect() : {
-        left: surface.left + target.x * surface.width / W,
-        top: surface.top + target.y * surface.height / H,
-        right: surface.left + (target.x + target.w) * surface.width / W,
-        bottom: surface.top + (target.y + target.h) * surface.height / H,
-      };
-      if (anchor.bottom < stage.top || anchor.top > stage.bottom || anchor.right < stage.left || anchor.left > stage.right) {
-        options.hidden = true;
-        return;
-      }
-      const box = options.getBoundingClientRect();
-      options.style.left = Math.max(8, Math.min(anchor.left, innerWidth - box.width - 8)) + 'px';
-      let top = anchor.top - box.height - 10;
-      if (top < stage.top + 4) top = anchor.bottom + 10;
-      options.style.top = Math.max(stage.top + 4, Math.min(top, innerHeight - box.height - 8)) + 'px';
+      // The formatting row reserves space above the board, including for full-height boxes.
+      options.style.removeProperty('left');
+      options.style.removeProperty('top');
     });
   }
   window.TutorStudio = Object.freeze({ version: VERSION, connectorMarkup, syncInspector, positionTextToolbar });
@@ -104,7 +90,7 @@
 
   const toolsPanel = document.getElementById('tools-panel');
   const textOptions = document.getElementById('text-options');
-  textOptions.classList.add('floating-text-toolbar');
+  textOptions.classList.add('floating-text-toolbar', 'docked-text-toolbar');
   textOptions.setAttribute('aria-label', 'Selected text formatting');
   const fontColor = document.createElement('label');
   fontColor.className = 'text-font-color';
@@ -120,7 +106,7 @@
       syncTextControls();
     } else formatText({ color: value });
   };
-  document.body.append(textOptions);
+  boardStage.before(textOptions);
   boardStage.addEventListener('scroll', positionTextToolbar);
   window.addEventListener('resize', positionTextToolbar);
   const sizeControls = document.createElement('div');
@@ -205,9 +191,14 @@
   const about = document.createElement('dialog');
   about.id = 'about-dialog';
   about.setAttribute('aria-labelledby', 'about-heading');
-  about.innerHTML = `<div class="about-symbol">V</div><span class="eyebrow">YOUR TEACHING STUDIO</span><h2 id="about-heading">Vinee TutorBoard <span data-app-version>v${VERSION}</span></h2><p>More room to teach. More ways to explain.</p><h3>What's new in v2.0.0</h3><ul><li>Compact headers, responsive drawing icons and refined light/dark themes.</li><li>Translucent text formatting with font color and Japanese IME support.</li><li>Shape fill, rotation and size controls; live RGB/hex colors with Apply.</li><li>Editable tables with transparent, white or black backgrounds.</li><li>Statistics: histograms, frequency polygons and smooth cumulative curves.</li><li>Teach Q1, Median and Q3 step by step with guides and coordinates.</li><li>Read any X or Y value on cumulative curves and function graphs.</li><li>Point labels, independent grid intervals, subdivisions and opacity.</li><li>Save your charts, tables and teaching settings in lessons and local drafts.</li></ul><div class="modal-actions"><button id="about-close" class="primary">Back to board</button></div>`;
+  about.innerHTML = `<div class="about-symbol">V</div><span class="eyebrow">YOUR TEACHING STUDIO</span><h2 id="about-heading">Vinee TutorBoard <span data-app-version>v${VERSION}</span></h2><p>More room to teach. More ways to explain.</p><h3>What's new in v2.1.1</h3><ul><li>Compact headers, responsive drawing icons and refined light/dark themes.</li><li>Translucent text formatting with font color and Japanese IME support.</li><li>Shape fill, rotation and size controls; live RGB/hex colors with Apply.</li><li>Editable tables with transparent, white or black backgrounds.</li><li>Statistics: histograms, frequency polygons and smooth cumulative curves.</li><li>Teach Q1, Median and Q3 step by step with guides and coordinates.</li><li>Read any X or Y value on cumulative curves and function graphs.</li><li>Point labels, independent grid intervals, subdivisions and opacity.</li><li>Save your charts, tables and teaching settings in lessons and local drafts.</li></ul><div class="modal-actions"><button id="about-close" class="primary">Back to board</button></div>`;
   document.body.append(about);
   const majorChanges=[
+    'A refined exercise timer with quick durations, automatic dropdown closing and a Time’s up dialog.',
+    'Text formatting stays above the board so it never covers the typing area.',
+    'Bold and underline selected text with Ctrl/Cmd+B and Ctrl/Cmd+U.',
+    'Text boxes stay inside the board without scrolling; continue with Next page inside the box.',
+    'Top-right exercise timer with Start, Pause, Resume, Reset and a time-up notice.',
     'A compact, responsive teaching studio with refined light and dark themes.',
     'Floating text formatting, font colors and Japanese IME support.',
     'Improved shape styling, rotation, sizing and live color selection.',

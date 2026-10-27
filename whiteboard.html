@@ -87,8 +87,8 @@
           value="28"
           aria-label="Text size"
         /><button id="text-larger" aria-label="Increase text size">A+</button
-        ><button id="text-bold" aria-pressed="false" title="Bold"><b>B</b></button
-        ><button id="text-underline" aria-pressed="false" title="Underline"><u>U</u></button>
+        ><button id="text-bold" aria-pressed="false" title="Bold (Ctrl/Cmd+B)"><b>B</b></button
+        ><button id="text-underline" aria-pressed="false" title="Underline (Ctrl/Cmd+U)"><u>U</u></button>
         <select id="text-list" aria-label="List style">
           <option value="none">No list</option>
           <option value="bullet">Bullets</option>
@@ -253,13 +253,8 @@
               <span>Every great lesson starts here.</span
               ><small>Pick up your chalk and make the first mark.</small>
             </div>
-            <textarea
-              maxlength="10000"
-              id="text-editor"
-              placeholder="Type your Text…"
-              aria-label="Text to place on board"
-              hidden
-            ></textarea>
+            <div id="text-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Text to place on board" hidden></div>
+            <button id="text-next-page" hidden>Next page →</button>
           </div>
         </div>
         <footer>
@@ -601,6 +596,7 @@ x^2</textarea>
     <script src="vendor/pdf-lib.min.js"></script>
     <script src="math.js"></script>
     <script src="data-tools.js"></script>
+    <script src="text-timer.js"></script>
     <script src="app.js"></script>
     <script src="studio.js"></script>
     <script src="color-picker.js"></script>

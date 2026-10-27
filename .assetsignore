@@ -27,3 +27,5 @@
 !vendor/
 !vendor/pdf-lib.min.js
 !vendor/pdf-lib-LICENSE.md
+
+!text-timer.js

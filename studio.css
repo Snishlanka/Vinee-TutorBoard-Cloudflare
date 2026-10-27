@@ -357,3 +357,84 @@ dialog::backdrop { background: #10251d70; }
   :root body .workspace-controls #page-position { font-size: 11px; }
   :root body .panel-controls { gap: 5px; }
 }
+#text-editor { overflow: hidden !important; resize: none !important; white-space: pre-wrap; overflow-wrap: anywhere;  box-sizing: border-box; }
+#text-next-page { position: absolute; z-index: 8; background: transparent; border: 0; text-align: right; padding: 3px 10px; color: #16834a; font-size: 12px; height: 30px; pointer-events: auto; max-width: 100%; margin-left: 0; }
+#text-next-page[hidden] { display: none; }
+/* Reserve a row for formatting instead of covering the text near the board edge. */
+:root body #text-options.docked-text-toolbar {
+  position: relative;
+  inset: auto;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  background: var(--studio-surface);
+  box-shadow: none;
+  backdrop-filter: none;
+  z-index: 10;
+}
+:root body #text-options.docked-text-toolbar[hidden] { display: none; }
+
+/* Exercise timer: compact running chip, calm setup panel, clear finish moment. */
+#exercise-timer { position: relative; margin-left: auto; }
+#exercise-timer > summary { display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; white-space: nowrap; min-height: 30px; padding: 5px 9px; border: 1px solid var(--studio-line); border-radius: 10px; background: var(--studio-surface); color: var(--studio-text); font-size: 11px; }
+#exercise-timer > summary::-webkit-details-marker { display: none; }
+#exercise-timer > summary:hover, #exercise-timer[open] > summary { background: var(--studio-soft); border-color: var(--studio-muted); }
+.timer-indicator { display: inline-flex; position: relative; }
+.timer-indicator svg, .timer-panel-icon svg { width: 19px; height: 19px; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.timer-chevron { width: 12px; height: 12px; stroke: currentColor; stroke-width: 1.5; opacity: .6; transition: transform .18s; }
+#exercise-timer[open] .timer-chevron { transform: rotate(180deg); }
+#timer-display { font-variant-numeric: tabular-nums; font-weight: 750; letter-spacing: .03em; font-size: 13px; }
+#exercise-timer[data-state='running'] > summary { background: var(--studio-selected); color: var(--studio-accent); border-color: var(--studio-accent); }
+.timer-running-dot { display: none; position: absolute; width: 5px; height: 5px; border-radius: 50%; background: currentColor; right: -2px; top: 0; box-shadow: 0 0 0 2px var(--studio-selected); }
+#exercise-timer[data-state='running'] .timer-running-dot { display: block; }
+#exercise-timer[data-state='paused'] > summary { border-style: dashed; }
+#exercise-timer.timer-ending > summary, #exercise-timer.timer-finished > summary { background: #fff3dc; color: #8a4b0a; border-color: #e8ba6b; }
+.timer-controls { position: absolute; right: 0; top: calc(100% + 10px); z-index: 110; width: min(308px, calc(100vw - 24px)); box-sizing: border-box; padding: 20px; background: var(--studio-surface); color: var(--studio-text); border: 1px solid var(--studio-line); border-radius: 18px; box-shadow: 0 16px 48px #10251d29; text-align: left; }
+.timer-panel-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.timer-eyebrow { display: block; font-size: 9px; letter-spacing: .15em; font-weight: 750; color: var(--studio-muted); }
+.timer-panel-heading h2 { margin: 5px 0 0; font-size: 19px; font-weight: 700; letter-spacing: -.04em; }
+.timer-panel-icon { display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 12px; background: var(--studio-selected); color: var(--studio-accent); }
+.timer-description { margin: 12px 0 16px; font-size: 12px; line-height: 1.55; color: var(--studio-muted); }
+.timer-preview { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 16px; margin-bottom: 16px; background: var(--studio-soft); border: 1px solid var(--studio-line); border-radius: 14px; }
+#timer-state-label { font-size: 11px; color: var(--studio-muted); }
+#timer-preview-time { font-size: 40px; line-height: 1.2; letter-spacing: -.055em; font-weight: 650; font-variant-numeric: tabular-nums; }
+.timer-duration-fields { display: flex; align-items: center; gap: 10px; }
+.timer-duration-fields > label { flex: 1; display: flex; flex-direction: column; gap: 6px; color: var(--studio-muted); font-size: 11px; }
+.timer-duration-fields > span { padding-top: 18px; color: var(--studio-muted); }
+:root body #exercise-timer .timer-duration-fields input { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px 12px; font-size: 17px; font-weight: 650; border: 1px solid var(--studio-line); border-radius: 9px; font-variant-numeric: tabular-nums; background: var(--studio-surface); }
+.timer-presets { display: flex; gap: 6px; margin-top: 12px; }
+:root body #exercise-timer .timer-presets button { flex: 1; min-height: 30px; padding: 5px 4px; font-size: 11px; border: 1px solid var(--studio-line); border-radius: 8px; }
+:root body #exercise-timer .timer-presets button[aria-pressed='true'] { background: var(--studio-selected); color: var(--studio-accent); border-color: var(--studio-accent); }
+#timer-message { margin: 10px 0 0; font-size: 11px; line-height: 1.5; color: #b45309; }
+#timer-message:empty { display: none; }
+.timer-action-row { display: flex; gap: 8px; margin-top: 18px; }
+:root body #exercise-timer #timer-start { display: flex; align-items: center; justify-content: space-between; flex: 1; min-height: 40px; padding: 10px 14px; border: 1px solid #147a4b; border-radius: 10px; background: #147a4b; color: white; font-size: 12px; font-weight: 650; }
+:root body #exercise-timer #timer-start:hover { background: #10613c; }
+:root body #exercise-timer #timer-reset { min-height: 40px; padding: 10px; font-size: 11px; border: 1px solid var(--studio-line); }
+.timer-footnote { font-size: 10px; line-height: 1.5; color: var(--studio-muted); margin: 12px 0 0; text-align: center; }
+:root body #timer-finish-dialog { box-sizing: border-box; width: min(380px, calc(100vw - 32px)); padding: 32px 28px 24px; text-align: center; border: 1px solid var(--studio-line); border-radius: 24px; background: var(--studio-surface); color: var(--studio-text); box-shadow: 0 24px 90px #0004; }
+#timer-finish-dialog::backdrop { background: #10251d66; backdrop-filter: blur(5px); }
+.timer-finish-art { position: relative; display: grid; place-items: center; width: 112px; height: 112px; margin: 0 auto 22px; background: #fff3dc; color: #9a5c14; border-radius: 50%; }
+.timer-finish-art > svg { width: 45px; height: 45px; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.timer-finish-orbit { position: absolute; inset: 9px; border: 1px dashed #d6ab60; border-radius: 50%; }
+.timer-finish-spark { position: absolute; color: #c98a28; }
+.timer-spark-one { top: 7px; right: -3px; font-size: 22px; }
+.timer-spark-two { bottom: 8px; left: 1px; font-size: 14px; }
+#timer-finish-heading { margin: 9px 0 8px; font-size: 36px; letter-spacing: -.055em; line-height: 1.15; }
+#timer-finish-description { margin: 0; font-size: 13px; line-height: 1.7; color: var(--studio-muted); }
+.timer-duration-chip { display: inline-block; margin: 16px 0 24px; padding: 6px 11px; border-radius: 20px; background: var(--studio-soft); color: var(--studio-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.timer-finish-actions { display: flex; flex-direction: column; gap: 8px; }
+:root body #timer-finish-dismiss { padding: 12px; border-radius: 11px; background: #147a4b; color: #fff; border: 1px solid #147a4b; font-size: 13px; font-weight: 650; }
+:root body #timer-restart { padding: 10px; border: 0; color: var(--studio-muted); background: transparent; font-size: 12px; }
+@media (prefers-reduced-motion: no-preference) { #timer-finish-dialog[open] { animation: timer-arrive .24s ease-out; } @keyframes timer-arrive { from { opacity: 0; transform: translateY(12px) scale(.97); } to { opacity: 1; transform: none; } } }
+@media (max-width: 600px) { #exercise-timer > summary { min-height: 34px; } .timer-controls { max-height: calc(100dvh - 140px); overflow-y: auto; } }
+
+:root body #exercise-timer .timer-presets button,
+:root body #exercise-timer #timer-reset { background: var(--studio-surface); color: var(--studio-text); }
+:root body #exercise-timer .timer-presets button[aria-pressed='true'] { background: var(--studio-selected); color: var(--studio-accent); }
+:root body #exercise-timer .timer-presets button:hover,
+:root body #exercise-timer #timer-reset:hover { background: var(--studio-soft); }

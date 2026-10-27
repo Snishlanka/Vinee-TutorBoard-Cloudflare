@@ -348,3 +348,12 @@ node tests/browser-graph-lens.cjs
 ```
 
 These checks cover graph settings/history, square units across screen sizes and panel states, compact click bounds, corner resizing with unchanged axes, and interactive lens coordinates. They use the same Playwright/Edge setup as the drawing checks.
+
+
+## v2.1.0 text and exercise tools
+
+Text editing uses a contenteditable textbox with a plain-text `value` interface. Bold/underline use the current selection (Ctrl/Cmd+B, Ctrl/Cmd+U); saved `runs` preserve mixed formatting in lessons, drafts, PNG and PDF. Whole-object formatting still works when selecting a placed box. `text-timer.js` initializes the editor before app.js and provides bounded text entry, an in-box Next page control and a top-right exercise timer with pause/resume/reset. The timer is a temporary teaching aid and is not included in exports or lesson data. Pasted text is plain text. Update notes appear in About and on the home page.
+
+The text formatting controls reserve a row above the board while text is selected or being edited. They never overlay lower typing lines, including for a full-height box and narrow screens. The board refits below that row.
+
+Exercise timer UI: quick 1/3/5/10-minute presets, a live countdown preview, and a compact running status chip. Start/Resume closes the setup dropdown automatically; reopen it to Pause or Reset. Completion opens an accessible Time’s up dialog with Back to the board and Run it again. Escape dismisses the dialog. The countdown uses a wall-clock deadline, including after background-tab throttling.

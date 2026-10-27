@@ -145,32 +145,41 @@ function connectorPath(c, o) {
     c.quadraticCurveTo(b.x, b.y, o.x + o.w, o.y + o.h);
   } else c.lineTo(o.x + o.w, o.y + o.h);
 }
+function textRuns(o) {
+  return o.runs?.length ? o.runs : [{ text: o.text, bold: !!o.bold, underline: !!o.underline }];
+}
 function textLayout(o, c) {
-  c.font = textFont(o);
-  const lines = [],
-    maxWidth = o.w ? Math.max(1, o.w - (o.box ? 24 : 0)) : Infinity;
-  o.text.split('\n').forEach((paragraph, index) => {
-    const prefix = o.list === 'bullet' ? '\u2022 ' : o.list === 'number' ? index + 1 + '. ' : '';
-    let line = prefix;
-    for (const word of paragraph.split(/(\s+)/u)) {
-      if (line && c.measureText(line + word).width > maxWidth) {
-        lines.push({ text: line, width: c.measureText(line).width });
-        line = '';
-      }
-      for (const char of word) {
-        if (line && c.measureText(line + char).width > maxWidth) {
-          lines.push({ text: line, width: c.measureText(line).width });
-          line = '';
-        }
-        line += char;
+  const lines = [], maxWidth = o.w ? Math.max(1, o.w - (o.box ? 24 : 0)) : Infinity;
+  let line = {text: '', width: 0, runs: []}, paragraph = 0;
+  const push = () => { lines.push(line); line = {text: '', width: 0, runs: []}; };
+  const append = (text, style) => {
+    if (!text) return;
+    c.font = textFont({...o, bold: style.bold});
+    const width = c.measureText(text).width;
+    const last = line.runs.at(-1);
+    if (last && last.bold === style.bold && last.underline === style.underline) { last.text += text; last.width += width; }
+    else line.runs.push({bold: !!style.bold, underline: !!style.underline, text, width});
+    line.text += text; line.width += width;
+  };
+  const prefix = () => append(o.list === 'bullet' ? '\u2022 ' : o.list === 'number' ? `${paragraph + 1}. ` : '', o);
+  prefix();
+  for (const run of textRuns(o)) {
+    for (const token of run.text.split(/(\n|[^\S\n]+)/u)) {
+      if (token === '\n') { push(); paragraph++; prefix(); continue; }
+      c.font = textFont({...o, bold: run.bold});
+      if (line.text && line.width + c.measureText(token).width > maxWidth) push();
+      for (const char of token) {
+        c.font = textFont({...o, bold: run.bold});
+        if (line.text && line.width + c.measureText(char).width > maxWidth) push();
+        append(char, run);
       }
     }
-    lines.push({ text: line, width: c.measureText(line).width });
-  });
-  return lines;
+  }
+  push(); return lines;
 }
 function textBoxHeight(o, c) {
-  return Math.max(o.h || 0, textLayout(o, c).length * textLineHeight(o) + (o.box ? 24 : 0));
+  const height = Math.max(o.h || 0, textLayout(o, c).length * textLineHeight(o) + (o.box ? 24 : 0));
+  return o.box ? Math.min(H - o.y, height) : height;
 }
 function arrowPoints(o) {
   const end = { x: o.x + o.w, y: o.y + o.h };
@@ -315,6 +324,8 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false, 
       c.lineWidth = 1.5;
       c.strokeRect(o.x, o.y, o.w, textBoxHeight(o, c));
     }
+    c.save();
+    if (o.box) { c.beginPath(); c.rect(o.x, o.y, o.w, textBoxHeight(o, c)); c.clip(); }
     layout.forEach((line, i) => {
       const y = o.y + padding + i * textLineHeight(o);
       const available = o.w ? o.w - padding * 2 : line.width;
@@ -326,15 +337,19 @@ function drawObject(c, o, boardColor = page().boardColor, skipErasures = false, 
           : o.align === 'right'
             ? available - line.width
             : 0);
-      c.fillText(line.text, x, y);
-      if (o.underline && line.text) {
-        c.lineWidth = Math.max(1, size / 18);
-        c.beginPath();
-        c.moveTo(x, y + size * 1.08);
-        c.lineTo(x + line.width, y + size * 1.08);
-        c.stroke();
+      let offset = 0;
+      for (const run of line.runs) {
+        c.font = textFont({...o, bold: run.bold});
+        c.fillText(run.text, x + offset, y);
+        if (run.underline && run.text) {
+          c.lineWidth = Math.max(1, size / 18); c.beginPath();
+          c.moveTo(x + offset, y + size * 1.08);
+          c.lineTo(x + offset + run.width, y + size * 1.08); c.stroke();
+        }
+        offset += run.width;
       }
     });
+    c.restore();
   }
   if (o.type === 'image') {
     let im = images.get(o.src);
@@ -1049,9 +1064,10 @@ function commitText() {
   if (ed.hidden) return;
   const size = Number($('text-size').value);
   if (Number.isFinite(size) && size >= 10 && size <= 120) textStyle.fontSize = size;
-  const value = ed.value.trim();
+  const value = ed.value;
   const editorBounds = ed.getBoundingClientRect();
   const boardBounds = canvas.getBoundingClientRect();
+  const editorLogicalHeight = ed.offsetHeight * W / boardBounds.width;
   ed.hidden = true;
   if (value) {
     checkpoint();
@@ -1059,13 +1075,14 @@ function commitText() {
       type: 'text',
       box: true,
       text: value,
+      runs: editorRuns(),
       x: +ed.dataset.x,
       y: +ed.dataset.y,
       color: ed.dataset.color || color,
       width,
       ...textStyle,
-      w: Math.max(80, Math.min(W, (editorBounds.width * W) / boardBounds.width)),
-      h: Math.max(40, Math.min(H, (editorBounds.height * H) / boardBounds.height)),
+      w: Math.max(40, Math.min(W - +ed.dataset.x, (editorBounds.width * W) / boardBounds.width)),
+      h: Math.max(20, Math.min(H - +ed.dataset.y, editorLogicalHeight)),
     };
     if (editingText) Object.assign(editingText, box);
     else page().objects.push(box);
@@ -1078,6 +1095,7 @@ function commitText() {
     editingText = null;
     render();
   }
+  flushTextOverflow();
 }
 function openTextBox(p, existing = null) {
   const r = canvas.getBoundingClientRect(),
@@ -1102,16 +1120,20 @@ function openTextBox(p, existing = null) {
   ed.dataset.displayScale = scale;
   ed.style.width = Math.min(existing?.w || p.w || 520, W - x) * scale + 'px';
   ed.style.height = Math.min(existing?.h || p.h || 180, H - y) * scale + 'px';
+  ed.style.maxWidth = (W - x) * scale + 'px';
+  ed.style.maxHeight = (H - y) * scale + 'px';
   ed.dataset.x = x;
   ed.dataset.y = y;
   ed.dataset.color = existing?.color || color;
   ed.value = existing?.text || '';
+  if (existing) setEditorRuns(textRuns(existing));
   ed.style.color = ed.dataset.color;
   ed.style.background = boardColors[page().boardColor || 'white'];
   ed.classList.toggle('dark-board', page().boardColor !== 'white');
   syncTextControls();
   render();
   ed.focus({ preventScroll: true });
+  fitTextEditor();
 }
 canvas.ondblclick = (e) => {
   if (tool === 'pen' || tool === 'laser' || tool === 'eraser' || e.altKey || (e.pointerType && !acceptsPointer(e))) return;
@@ -1216,6 +1238,9 @@ $('text-editor').addEventListener('compositionend', () => {
 });
 $('text-editor').onkeydown = (e) => {
   if (isIMEKey(e)) return;
+  if ((e.ctrlKey || e.metaKey) && ['b', 'u'].includes(e.key.toLowerCase())) {
+    e.preventDefault(); formatText(e.key.toLowerCase() === 'b' ? {bold: true} : {underline: true}); return;
+  }
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     commitText();
@@ -1223,6 +1248,7 @@ $('text-editor').onkeydown = (e) => {
   if (e.key === 'Escape') {
     editingText = null;
     $('text-editor').hidden = true;
+    pendingTextRuns = [];
     render();
   }
 };
@@ -1517,6 +1543,7 @@ function validObject(o) {
   if (!Number.isFinite(o.x) || !Number.isFinite(o.y)) return false;
   if (o.type === 'text')
     return (
+      (o.runs === undefined || (Array.isArray(o.runs) && o.runs.length <= 10000 && o.runs.every(r => r && typeof r.text === 'string' && typeof r.bold === 'boolean' && typeof r.underline === 'boolean') && o.runs.map(r => r.text).join('') === o.text)) &&
       (o.box === undefined || typeof o.box === 'boolean') &&
       (o.border === undefined || typeof o.border === 'boolean') &&
       (o.box !== true || (Number.isFinite(o.w) && Number.isFinite(o.h))) &&
@@ -2676,7 +2703,7 @@ function textLineHeight(o) {
 function syncTextControls() {
   const target = selected?.type === 'text' && page().objects.includes(selected) ? selected : null;
   const style = editingText ? textStyle : target || textStyle;
-  $('text-edit-selected').hidden = !target || !!editingText;
+  $('text-edit-selected').hidden = !target || !$('text-editor').hidden;
   $('text-options').hidden = globalThis.TutorStudio
     ? !target && $('text-editor').hidden
     : tool !== 'text' && !target && $('text-editor').hidden;
@@ -2697,17 +2724,29 @@ function syncTextControls() {
     ed.style.textAlign = textStyle.align || 'left';
     ed.style.lineHeight = textStyle.spacing || 1.35;
     ed.style.padding = 12 * scale + 'px';
+    ed.style.paddingBottom = 40 * scale + 'px';
     ed.style.fontSize = textStyle.fontSize * scale + 'px';
-    ed.style.fontWeight = textStyle.bold ? 'bold' : 'normal';
-    ed.style.textDecoration = textStyle.underline ? 'underline' : 'none';
+    ed.style.fontWeight = 'normal';
+    ed.style.textDecoration = 'none';
   }
   globalThis.TutorStudio?.positionTextToolbar();
+  if (!ed.hidden && typeof fitTextEditor === 'function') fitTextEditor();
 }
 function formatText(change) {
+  const editor = $('text-editor');
+  if (!editor.hidden && ('bold' in change || 'underline' in change)) {
+    editor.focus({preventScroll: true});
+    document.execCommand('bold' in change ? 'bold' : 'underline', false);
+    fitTextEditor(); return;
+  }
+
   const target = selected?.type === 'text' && page().objects.includes(selected) ? selected : null;
   if (target && !editingText) {
     checkpoint();
     Object.assign(target, change);
+    if (target.runs) target.runs = target.runs.map(run => ({...run,
+      ...('bold' in change ? {bold: change.bold} : {}),
+      ...('underline' in change ? {underline: change.underline} : {})}));
     textStyle = {
       fontSize: target.fontSize || 28,
       bold: !!target.bold,
@@ -3028,3 +3067,8 @@ function paintLaser(now) {
   c.globalAlpha=1;c.shadowBlur=0;
   if(laserTrails.some(trail=>trail.length))laserFrame=requestAnimationFrame(paintLaser);
 }
+
+document.addEventListener('keydown', e => {
+  if (isIMEKey(e) || !(e.ctrlKey || e.metaKey) || e.altKey || !['b', 'u'].includes(e.key.toLowerCase()) || e.target.closest('input,textarea,[contenteditable],dialog')) return;
+  if (selected?.type === 'text') { e.preventDefault(); const key = e.key.toLowerCase() === 'b' ? 'bold' : 'underline'; formatText({[key]: !selected[key]}); }
+});

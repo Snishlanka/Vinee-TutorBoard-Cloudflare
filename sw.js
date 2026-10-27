@@ -1,10 +1,11 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = 'v2.0.0-final-statistics-icon';
+const REVISION = 'v2.1.1-polished-timer';
 const ASSETS = [
   'whiteboard.html',
   'theme.js',
   'style.css',
   'app.js',
+  'text-timer.js',
   'studio.js',
   'color-picker.js',
   'data-tools.js',

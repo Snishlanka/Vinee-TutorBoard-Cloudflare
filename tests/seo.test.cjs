@@ -10,7 +10,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 test('landing page exposes indexable SEO content in initial HTML', () => {
   const html = read('index.html');
   assert.equal((html.match(/<h1\b/g) || []).length, 1);
-  assert.match(html, /<title>Vinee TutorBoard \| Digital Whiteboard for Math Teaching<\/title>/);
+  assert.match(html, /<title>Vinee TutorBoard \u2014 Free Online Tutor Board for Teaching<\/title>/);
   assert.match(html, /<meta name="description" content="[^"]{80,170}">/);
   assert.match(html, /<link rel="canonical" href="https:\/\/vinee-tutorboard\.snishlanka\.workers\.dev\/">/);
   assert.match(html, /application\/ld\+json/);
