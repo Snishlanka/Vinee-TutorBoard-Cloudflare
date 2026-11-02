@@ -4,6 +4,20 @@ A browser-based teaching whiteboard for writing, drawing, and explaining lessons
 
 Built with HTML, CSS, and vanilla JavaScript, TutorBoard runs entirely in the browser and is configured for deployment as Cloudflare Workers static assets. No application backend, account, database service, or frontend build step is required.
 
+## v2.3.0 - Lesson library and reading aids
+
+Open **Lesson library** from File or the device-save status row. **New lesson** saves your current work before starting a blank lesson; if local saving fails, the current lesson remains open. Lessons stay in the existing IndexedDB draft store on this browser/device. Cards show a board preview, name, subject, page count, book indicator and last-opened date; search names/subjects, edit details, and choose Continue lesson. Subjects and card previews are device-library metadata; editable lesson JSON keeps the lesson title and book reading aids. Current lessons cannot be deleted. Switching saves the current lesson first; failed storage writes stop the switch. Use Save lesson JSON for a portable backup. No cloud sync or account is required.
+
+In PDF Book View, use **Browse pages and bookmarks** to open the normally hidden navigation sidebar. Page thumbnails load only as needed in windows of 24; Previous pages and Next pages keep large books responsive. The bookmark button adds or edits a named bookmark on the current page; bookmark deletion does not change the PDF.
+
+Centered Previous/Next controls sit beside the PDF in their own rails so they never cover page content or ink. They stay visible while scrolling/zooming and disable at page boundaries or during loading. Narrow readers use the existing bottom navigation to preserve reading space.
+
+Use **Cover an answer** in the PDF toolbar and drag a rectangle over an answer. Click a hidden cover to reveal it; reselect the cover tool to hide it again or use Hide all/Reveal all. Delete selected removes one cover; Clear page covers confirms before clearing the page. Revealed answers can be annotated with ordinary drawing tools. Covers are teaching aids: they persist in editable lessons and drafts but never appear in exported book PDFs or cropped board images.
+
+Implementation: `pdf-study.js` provides PDF thumbnails, bookmarks and normalized per-page answer covers. `pdf-tools.js` owns state and snapshots; `app.js` validates optional `loadedPDF.bookmarks` and `loadedPDF.covers`. `lesson-library.js` provides the library UI while `pwa.js` retains the existing save queue, restore validation and Web Locks. `draft-store.js` lists compact card metadata. `v230.css` supplies scoped responsive light/dark styling. Include new assets in whiteboard.html, .assetsignore and sw.js. Lesson format remains version 2; older files without reading aids remain valid.
+
+Verify with `node --test tests/*.test.cjs` and `tests/browser-v230.cjs` using PLAYWRIGHT_MODULE. Also run the PDF, text/timer and board editing browser regressions. Release badge, About, landing notes and service-worker revision are v2.3.0. Deployment remains the user's separate step.
+
 ## v2.0.0 — Teaching studio
 
 - Compact header with a **File** menu for Open lesson, Save lesson, PNG export, lesson PDF export and tutor name. **Present** remains a prominent action.
@@ -196,7 +210,7 @@ Tool shortcuts apply when you are not typing in a form field.
 
 ## Local drafts and offline use
 
-Drafts are saved in IndexedDB in the current browser on the current device. Wait for **Saved on this device** before closing the app, and use **Local drafts** to restore a previous lesson. Lessons are not uploaded by the application and drafts do not sync between devices or browsers.
+Drafts are saved in IndexedDB in the current browser on the current device. Wait for **Saved on this device** before closing the app, and use **Lesson library** to continue a previous lesson. Lessons are not uploaded by the application and drafts do not sync between devices or browsers.
 
 To prepare offline access:
 
@@ -389,3 +403,5 @@ PDF Book View navigation: Previous is at the lower left and Next at the lower ri
 Final release: **v2.2.0 - PDF Book View**. The reader starts with Laser and Fit to window, uses right-drag to pan and Ctrl/Cmd+wheel to zoom, and keeps its header/tools compact. Previous/Next occupy the lower left/right of a reserved footer; the page/jump field is centered. Save lesson remains one editable JSON containing the board, loaded PDF and notes. PDF export produces two independent PDFs through the ready-to-download dialog. PNG export still saves only the visible board page. Deployment is performed by the user after reviewing this release.
 
 Board text UI: Next page is hidden while the text fits. It appears only when there is overflow to continue; ordinary text boxes do not reserve extra button padding. Reflow preserves the complete text stream, including pending overflow.
+
+Navigation refinement: hide bottom Previous/Next when side page-turn buttons are visible. Keep the page/jump field centered; narrow readers retain bottom buttons as their only page-turn controls.

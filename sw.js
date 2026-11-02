@@ -1,6 +1,9 @@
 // Offline app shell. Bump REVISION whenever cached application files change.
-const REVISION = 'v2.2.0-pdf-book-view-final-ui';
+const REVISION = 'v2.3.0-reader-navigation-cleanup';
 const ASSETS = [
+  'pdf-study.js',
+  'lesson-library.js',
+  'v230.css',
   'pdf-tools.js',
   'pdf-teaching.js',
   'pdf-editing.js',

@@ -1,6 +1,6 @@
 // Presentation layer: keep the existing editor controls and their event handlers.
 (() => {
-  const VERSION = '2.2.0';
+  const VERSION = '2.3.0';
   const icons = {
     pen: '<path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5M4 15l5 5"/>',
     eraser: '<path d="m15 3 6 6-11 12H6l-4-4Z"/><path d="m7 12 7 7M10 21h12"/>',
@@ -191,26 +191,15 @@
   const about = document.createElement('dialog');
   about.id = 'about-dialog';
   about.setAttribute('aria-labelledby', 'about-heading');
-  about.innerHTML = `<div class="about-symbol">V</div><span class="eyebrow">YOUR TEACHING STUDIO</span><h2 id="about-heading">Vinee TutorBoard <span data-app-version>v${VERSION}</span></h2><p>More room to teach. More ways to explain.</p><h3>What's new in v2.2.0</h3><ul><li>Compact headers, responsive drawing icons and refined light/dark themes.</li><li>Translucent text formatting with font color and Japanese IME support.</li><li>Shape fill, rotation and size controls; live RGB/hex colors with Apply.</li><li>Editable tables with transparent, white or black backgrounds.</li><li>Statistics: histograms, frequency polygons and smooth cumulative curves.</li><li>Teach Q1, Median and Q3 step by step with guides and coordinates.</li><li>Read any X or Y value on cumulative curves and function graphs.</li><li>Point labels, independent grid intervals, subdivisions and opacity.</li><li>Save your charts, tables and teaching settings in lessons and local drafts.</li></ul><div class="modal-actions"><button id="about-close" class="primary">Back to board</button></div>`;
+  about.innerHTML = `<div class="about-symbol">V</div><span class="eyebrow">YOUR TEACHING STUDIO</span><h2 id="about-heading">Vinee TutorBoard <span data-app-version>v${VERSION}</span></h2><p>More room to teach. More ways to explain.</p><h3>What's new in v2.3.0</h3><ul><li>Compact headers, responsive drawing icons and refined light/dark themes.</li><li>Translucent text formatting with font color and Japanese IME support.</li><li>Shape fill, rotation and size controls; live RGB/hex colors with Apply.</li><li>Editable tables with transparent, white or black backgrounds.</li><li>Statistics: histograms, frequency polygons and smooth cumulative curves.</li><li>Teach Q1, Median and Q3 step by step with guides and coordinates.</li><li>Read any X or Y value on cumulative curves and function graphs.</li><li>Point labels, independent grid intervals, subdivisions and opacity.</li><li>Save your charts, tables and teaching settings in lessons and local drafts.</li></ul><div class="modal-actions"><button id="about-close" class="primary">Back to board</button></div>`;
   document.body.append(about);
-  const majorChanges=[
-    'A compact reading-first header; Laser and Fit to window are the defaults, with right-drag pan and Ctrl+wheel zoom.',
-    'PDF tools now share board chalk cursors, fading lasers, rich text boxes and shape resize/rotation controls.',
-    'Fit to window and a PDF-only Crop tool with crosshair selection.',
-    'Keep a PDF textbook in its own reader with the same board toolbar, page turns and zoom.',
-    'Crop selected PDF areas onto the board and export the lesson and annotated book as two separate PDFs.',
-    'A refined exercise timer with quick durations, automatic dropdown closing and a Time’s up dialog.',
-    'Text formatting stays above the board so it never covers the typing area.',
-    'Bold and underline selected text with Ctrl/Cmd+B and Ctrl/Cmd+U.',
-    'Text boxes stay inside the board without scrolling; continue with Next page inside the box.',
-    'Top-right exercise timer with Start, Pause, Resume, Reset and a time-up notice.',
-    'A compact, responsive teaching studio with refined light and dark themes.',
-    'Floating text formatting, font colors and Japanese IME support.',
-    'Improved shape styling, rotation, sizing and live color selection.',
-    'Editable tables with transparent, white or black backgrounds.',
-    'Statistics charts with smooth cumulative curves and step-by-step quartile teaching.',
-    'Read any X or Y value on function graphs and cumulative curves, with guides and coordinates.',
-    'Floating statistics formatting and adjustable grid controls.'
+  const majorChanges = [
+    'Find PDF pages quickly with an expandable thumbnail sidebar and named bookmarks.',
+    'Cover answers, reveal them one at a time, and hide them again for another exercise.',
+    'A local lesson library with previews, subjects, search and Continue lesson.',
+    'Lesson names, bookmarks, answer covers and PDF notes stay with saved lessons.',
+    'Teaching covers are excluded from PDF exports; lesson and annotated book download separately.',
+    'A reading-first workspace with responsive light and dark layouts and keyboard controls.'
   ];
   about.querySelector('ul').replaceChildren(...majorChanges.map(text=>{const item=document.createElement('li');item.textContent=text;return item;}));
   document.getElementById('about-open').onclick = () => { commitText(); about.showModal(); };

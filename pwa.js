@@ -16,7 +16,8 @@
     writeQueue = Promise.resolve();
   let draftId = crypto.randomUUID(),
     releaseLock = null,
-    restoring = false;
+    restoring = false,
+    draftMetadata = { lastOpenedAt: Date.now() };
   let offlineReady = false,
     registration = null,
     installPrompt = null;
@@ -92,7 +93,13 @@
         try {
           const snapshot = board.snapshot();
           report('Saving on this device…');
-          await store.put({ id: draftId, savedAt: Date.now(), snapshot });
+          await store.put({
+            ...draftMetadata,
+            id: draftId,
+            savedAt: Date.now(),
+            snapshot,
+            thumbnail: makeThumbnail(),
+          });
           savedRevision = version;
           dirty = revision !== version;
           report(dirty ? 'Unsaved changes' : 'Saved on this device');
@@ -124,110 +131,221 @@
     void flush();
   });
 
-  const draftsDialog = byId('drafts-dialog');
-  async function showDrafts(startup = false) {
-    if (!ready) return;
-    if (!startup) {
-      board.commit();
-      if (!(await flush()))
-        toast('Autosave failed. Delete an older draft to free space, or use Save lesson.');
-    }
+  function makeThumbnail() {
     try {
-      const records = (await store.list()).sort((a, b) => b.savedAt - a.savedAt);
-      if (startup && (!records.length || dirty)) return;
-      const list = byId('draft-list');
-      list.replaceChildren();
-      for (const record of records) {
-        const row = document.createElement('li'),
-          label = document.createElement('div');
-        const title = document.createElement('strong'),
-          date = document.createElement('small');
-        title.textContent = record.title || 'Untitled lesson';
-        date.textContent =
-          new Date(record.savedAt).toLocaleString() + ' · ' + record.pageCount + ' page(s)';
-        label.append(title, date);
-        const open = document.createElement('button');
-        open.textContent = record.id === draftId ? 'Current lesson' : 'Restore';
-        open.disabled = record.id === draftId;
-        open.onclick = async () => {
-          open.disabled = true;
-          let held;
-          try {
-            board.commit();
-            if (!(await flush())) {
-              toast(
-                'Could not save the current lesson. Free space before restoring another draft.'
-              );
-              return;
-            }
-            held = await lock(record.id);
-            if (!held) {
-              toast('This draft is open in another window. Close it there first.');
-              return;
-            }
-            const fresh = await store.get(record.id);
-            if (!fresh) throw Error('This draft has been removed in another window.');
-            // Without Web Locks, restore a copy so two tabs can never overwrite each other.
-            restoring = true;
-            board.restore(fresh.snapshot);
-            restoring = false;
-            releaseLock?.();
-            releaseLock = held.release;
-            held = null;
-            draftId = navigator.locks ? record.id : crypto.randomUUID();
-            dirty = false;
-            revision++;
-            savedRevision = revision;
-            if (!navigator.locks) {
-              changed();
-              await flush();
-            } else report('Recovered · saved on this device');
-            draftsDialog.close();
-            toast('Lesson recovered. Keep a lesson file as a backup.');
-          } catch (error) {
-            toast(error.message || 'Could not restore this draft.');
-          } finally {
-            restoring = false;
-            held?.release();
-            open.disabled = false;
-          }
-        };
-        const remove = document.createElement('button');
-        remove.textContent = 'Delete';
-        remove.disabled = record.id === draftId;
-        remove.onclick = async () => {
-          if (!confirm('Delete this local draft? Downloaded lesson files are kept.')) return;
-          let held;
-          try {
-            held = await lock(record.id);
-            if (!held) {
-              toast('This draft is open in another window.');
-              return;
-            }
-            // No safe cross-tab deletion without Web Locks.
-            if (!held.exclusive) {
-              toast('Deleting drafts requires a browser with Web Locks support.');
-              return;
-            }
-            await store.delete(record.id);
-            row.remove();
-          } catch {
-            toast('Could not delete this draft.');
-          } finally {
-            held?.release();
-          }
-        };
-        row.append(label, open, remove);
-        list.append(row);
-      }
-      byId('draft-empty').hidden = !!records.length;
-      if (!draftsDialog.open) draftsDialog.showModal();
-    } catch (error) {
-      report('Drafts unavailable — use Save lesson', true);
+      const source = document.querySelector('#board'),
+        image = document.createElement('canvas');
+      if (!source) return '';
+      image.width = 480;
+      image.height = 180;
+      image.getContext('2d').drawImage(source, 0, 0, image.width, image.height);
+      return image.toDataURL('image/jpeg', 0.65);
+    } catch {
+      return '';
     }
   }
-  byId('show-drafts').onclick = () => showDrafts();
-  byId('drafts-close').onclick = () => draftsDialog.close();
+  async function openDraft(id) {
+    let held;
+    try {
+      if (id === draftId) return;
+      board.commit();
+      if (!(await flush()))
+        throw Error('Could not save the current lesson. Use Save lesson before switching.');
+      held = await lock(id);
+      if (!held) throw Error('This lesson is open in another window. Close it there first.');
+      const fresh = await store.get(id);
+      if (!fresh) throw Error('This lesson was removed in another window.');
+      restoring = true;
+      board.restore(fresh.snapshot);
+      restoring = false;
+      releaseLock?.();
+      releaseLock = held.release;
+      held = null;
+      draftId = navigator.locks ? id : crypto.randomUUID();
+      draftMetadata = { subject: fresh.subject || '', lastOpenedAt: Date.now() };
+      dirty = true;
+      revision++;
+      if (!(await flush()))
+        toast('Lesson opened, but local saving failed. Download a lesson backup.');
+      else toast('Lesson ready.');
+    } finally {
+      restoring = false;
+      held?.release();
+    }
+  }
+  async function createDraft() {
+    board.commit();
+    if (!(await flush()))
+      throw Error('Could not save the current lesson. Use Save lesson before starting another.');
+    const id = crypto.randomUUID(),
+      held = await lock(id);
+    if (!held) throw Error('Could not start a new lesson. Please try again.');
+    const current = board.snapshot().lesson,
+      now = Date.now();
+    const snapshot = {
+      activePage: 0,
+      lesson: {
+        format: 'tutorboard',
+        version: 2,
+        boardWidth: current.boardWidth,
+        boardHeight: current.boardHeight,
+        title: 'Untitled lesson',
+        tutorName: current.tutorName || '',
+        pages: [{ background: 'blank', boardColor: 'white', objects: [] }],
+        loadedPDF: null,
+      },
+    };
+    let adopted = false,
+      stored = false;
+    try {
+      // Save before replacing the board: a quota failure leaves the previous lesson untouched.
+      await store.put({
+        id,
+        savedAt: now,
+        lastOpenedAt: now,
+        subject: '',
+        snapshot,
+        thumbnail: '',
+      });
+      stored = true;
+      restoring = true;
+      board.restore(snapshot);
+      restoring = false;
+      releaseLock?.();
+      releaseLock = held.release;
+      adopted = true;
+      draftId = id;
+      draftMetadata = { subject: '', lastOpenedAt: now };
+      dirty = false;
+      revision++;
+      savedRevision = revision;
+      report('New lesson · saved on this device');
+      toast('Your new lesson is ready.');
+    } catch (error) {
+      if (stored && !adopted) {
+        try {
+          await store.delete(id);
+        } catch {}
+      }
+      throw Error(
+        error?.message || 'Could not create a new lesson. Your current lesson has been kept.'
+      );
+    } finally {
+      restoring = false;
+      if (!adopted) held.release();
+    }
+  }
+  async function deleteDraft(id) {
+    if (id === draftId)
+      throw Error('Keep the current lesson. Open another lesson before deleting it.');
+    let held;
+    try {
+      held = await lock(id);
+      if (!held) throw Error('This lesson is open in another window.');
+      if (!held.exclusive)
+        throw Error('Deleting lessons requires a browser with Web Locks support.');
+      await store.delete(id);
+    } finally {
+      held?.release();
+    }
+  }
+  async function updateMetadata(id, values) {
+    const subject =
+      values.subject === undefined ? undefined : String(values.subject).trim().slice(0, 80);
+    const title =
+      values.title === undefined
+        ? undefined
+        : String(values.title).trim().slice(0, 100) || 'Untitled lesson';
+    if (id === draftId) {
+      if (subject !== undefined) draftMetadata.subject = subject;
+      if (title !== undefined) byId('title').value = title;
+      changed();
+      if (!(await flush()))
+        throw Error('Could not save these details. Download a backup and free device storage.');
+      return;
+    }
+    let held;
+    try {
+      held = await lock(id);
+      if (!held || !held.exclusive)
+        throw Error('This lesson cannot be edited while open in another window.');
+      const record = await store.get(id);
+      if (!record) throw Error('This lesson has been removed.');
+      if (subject !== undefined) record.subject = subject;
+      if (title !== undefined) record.snapshot.lesson.title = title;
+      await store.put(record);
+    } finally {
+      held?.release();
+    }
+  }
+  async function showDrafts(startup = false) {
+    if (!ready) {
+      toast('Local saving is not available. Use Save lesson to keep a file.');
+      return;
+    }
+    if (!startup) {
+      board.commit();
+      if (!(await flush())) {
+        toast('Could not save the current lesson. Use Save lesson before switching.');
+        return;
+      }
+    }
+    try {
+      const records = (await store.list()).sort(
+        (a, b) => (b.lastOpenedAt || b.savedAt) - (a.lastOpenedAt || a.savedAt)
+      );
+      if (startup && (!records.length || dirty)) return;
+      await window.TutorLessonLibrary?.show({
+        records,
+        get currentId() {
+          return draftId;
+        },
+        onOpen: openDraft,
+        onCreate: createDraft,
+        onDelete: deleteDraft,
+        onSave: async () => {
+          changed();
+          if (!(await flush()))
+            throw Error('Local save failed. Use Save lesson to download a backup.');
+        },
+        onMetadata: updateMetadata,
+        refresh: () => store.list(),
+      });
+    } catch (error) {
+      toast(error.message || 'Lesson library unavailable. Use Save lesson.');
+    }
+  }
+  window.TutorPWA.library = {
+    show: () => showDrafts(),
+    list: async () => (ready ? store.list() : []),
+    open: openDraft,
+    create: createDraft,
+    updateMetadata,
+    get currentId() {
+      return draftId;
+    },
+    get ready() {
+      return ready;
+    },
+  };
+  const libraryButtons = [byId('show-drafts'), byId('lesson-library-open')].filter(Boolean);
+  for (const button of libraryButtons) {
+    button.textContent = 'Lesson library';
+    button.disabled = true;
+    button.setAttribute('aria-busy', 'true');
+    button.title = 'Opening lessons saved on this device';
+    button.onclick = () => showDrafts();
+  }
+  function libraryReady(available) {
+    for (const button of libraryButtons) {
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      button.title = available
+        ? 'Browse lessons saved on this device'
+        : 'Local saving unavailable. Use File ? Save lesson for a backup.';
+    }
+  }
+  byId('drafts-close').onclick = () => byId('drafts-dialog').close();
   (async () => {
     try {
       store = await new TutorDraftStore(scope).open();
@@ -235,11 +353,12 @@
       releaseLock = held?.release;
       ready = true;
       report(dirty ? 'Unsaved changes' : 'Autosave ready · this device only');
-      byId('show-drafts').disabled = false;
+      libraryReady(true);
       await showDrafts(true);
       if (dirty) await flush();
     } catch (error) {
       report('Local saving unavailable — use Save lesson', true);
+      libraryReady(false);
     }
   })();
 

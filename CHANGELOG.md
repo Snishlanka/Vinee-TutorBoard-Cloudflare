@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.3.0 - Lesson library and reading aids
+
+- Centered side page-turn controls stay outside PDF text/ink, with loading/boundary states. Duplicate footer buttons hide on wide readers; narrow readers use footer buttons, with the page field always centered.
+- Expandable PDF navigation with lazy thumbnails, current-page highlighting and named bookmarks.
+- Answer covers with click-to-reveal, Hide all/Reveal all and per-page persistence; teaching covers are excluded from PDF exports.
+- Local lesson library with previews, search by lesson/subject, editable details, Continue lesson and a safely saved New lesson action.
+- Existing IndexedDB autosave and Web Locks protect lesson switching, deletion and metadata edits; storage failures keep saved lessons intact.
+- Responsive light/dark layouts, keyboard navigation and contextual controls preserve teaching space.
+- Bookmarks and normalized answer covers remain compatible with version-2 lesson JSON and local drafts.
+- Updated release notes and offline application assets.
+
 ## v2.2.0 — PDF Book View
 
 - PDF book opens the loaded book, or chooses a local PDF when none is loaded; Change PDF replaces it.

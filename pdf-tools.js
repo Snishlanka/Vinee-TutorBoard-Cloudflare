@@ -100,6 +100,47 @@
     changed: () => saveLoadedReader(true),
     crop: () => setMode(!reader?.cropMode),
   });
+  // Keep page-turn targets outside the scrolling/drawing surface.
+  const readingArea = document.createElement('div');
+  readingArea.className = 'pdf-reading-area';
+  stage.before(readingArea);
+  const sideButtons = [-1, 1].map((direction) => {
+    const button = document.createElement('button');
+    const label = direction < 0 ? 'Previous' : 'Next';
+    button.id = direction < 0 ? 'pdf-side-prev' : 'pdf-side-next';
+    button.type = 'button';
+    button.className = 'pdf-side-turn';
+    button.disabled = true;
+    button.setAttribute('aria-label', label + ' PDF page');
+    button.title = label + ' page (' + (direction < 0 ? '←' : '→') + ')';
+    button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (direction < 0 ? 'm15 5-7 7 7 7' : 'm9 5 7 7-7 7') + '"/></svg><span>' + (direction < 0 ? 'Prev' : 'Next') + '</span>';
+    button.onclick = () => { if (reader && !button.disabled) showReaderPage(reader.number + direction); };
+    return button;
+  });
+  readingArea.append(sideButtons[0], stage, sideButtons[1]);
+  function syncPageNavigation() {
+    dialog.classList.toggle('pdf-side-navigation', readingArea.clientWidth > 620 && innerWidth > 700);
+  }
+  new ResizeObserver(syncPageNavigation).observe(readingArea);
+  let studyPreviousTool = 'laser';
+  const study = createPDFStudy({
+    dialog, frame, getReader: () => reader,
+    navigate: showReaderPage,
+    thumbnail: async (data, number) => {
+      const doc = await loadDocument(data), page = await doc.getPage(number);
+      const natural = page.getViewport({scale:1});
+      const viewport = page.getViewport({scale:150/natural.width});
+      const canvas = document.createElement('canvas');
+      canvas.width=Math.ceil(viewport.width); canvas.height=Math.ceil(viewport.height);
+      await page.render({canvas,canvasContext:canvas.getContext('2d'),viewport,background:'#ffffff'}).promise;
+      return canvas;
+    },
+    changed: () => saveLoadedReader(true),
+    prepare: () => { teaching.commitText(); teaching.cancel(); if (reader?.cropMode) setMode(false); },
+    activate: () => { studyPreviousTool = teaching.getTool(); teaching.selectTool('cover'); },
+    deactivate: () => teaching.selectTool(studyPreviousTool),
+    layout: fitPreview,
+  });
   function base64Bytes(data) {
     const binary = atob(data),
       bytes = new Uint8Array(binary.length);
@@ -226,6 +267,8 @@
     for (const id of [
       'pdf-reader-prev',
       'pdf-reader-next',
+      'pdf-side-prev',
+      'pdf-side-next',
       'pdf-reader-apply',
       'pdf-page-number',
       'pdf-mode-full',
@@ -235,10 +278,13 @@
     if (!isLoading && reader) {
       $pdf('pdf-reader-prev').disabled = reader.number <= 1;
       $pdf('pdf-reader-next').disabled = reader.number >= reader.total;
+      $pdf('pdf-side-prev').disabled = reader.number <= 1;
+      $pdf('pdf-side-next').disabled = reader.number >= reader.total;
     }
   }
   function fitPreview() {
     if (!reader?.canvas || !dialog.open) return;
+    syncPageNavigation();
     const widthRatio = (stage.clientWidth - 32) / reader.canvas.width,
       heightRatio = (stage.clientHeight - 32) / reader.canvas.height;
     const ratio = reader.fitMode === 'window' ? widthRatio : Math.min(widthRatio, heightRatio);
@@ -319,6 +365,7 @@
   }
   function setMode(crop) {
     if (!reader) return;
+    study?.cancel();
     teaching.commitText();
     teaching.cancel();
     reader.cropMode = crop;
@@ -342,6 +389,7 @@
     if (!reader) return;
     teaching.commitText();
     teaching.cancel();
+    study.cancel();
     const current = reader,
       token = ++readerToken;
     const nextNumber = Math.max(1, Math.min(current.total || MAX_PDF_PAGES, number));
@@ -366,6 +414,7 @@
       setMode(current.cropMode);
       fitPreview();
       saveLoadedReader(true);
+      study.pageChanged();
     } catch (error) {
       if (token !== readerToken || reader !== current || !dialog.open) return;
       loading(false);
@@ -390,6 +439,8 @@
       zoom: 1,
       fitMode: 'window',
       annotations: clone(context.annotations || {}),
+      bookmarks: clone(context.bookmarks || []),
+      covers: clone(context.covers || {}),
       histories: {},
       dirty: false,
     };
@@ -421,6 +472,7 @@
     closingReader = true;
     teaching.commitText();
     teaching.cancel();
+    study.cancel();
     try {
       saveLoadedReader(true);
     } catch (error) {
@@ -664,6 +716,8 @@
       totalPages: reader.total,
       pageNumber: reader.number,
       annotations: teaching.snapshotAnnotations(),
+      bookmarks: clone(reader.bookmarks || []),
+      covers: clone(reader.covers || {}),
     };
     reader.dirty = false;
     sync();
@@ -671,7 +725,7 @@
   }
   function snapshot() {
     if (dialog.open && reader?.canvas) saveLoadedReader(false);
-    return loadedBook ? { ...loadedBook, annotations: clone(loadedBook.annotations || {}) } : null;
+    return loadedBook ? { ...loadedBook, annotations: clone(loadedBook.annotations || {}), bookmarks: clone(loadedBook.bookmarks || []), covers: clone(loadedBook.covers || {}) } : null;
   }
   function sync() {
     importButton.classList.toggle('pdf-book-loaded', !!loadedBook);
@@ -700,12 +754,15 @@
         total: loadedBook.totalPages,
         number: loadedBook.pageNumber,
         annotations: loadedBook.annotations,
+        bookmarks: loadedBook.bookmarks,
+        covers: loadedBook.covers,
         targetPage: page(),
       },
       fullScreen
     );
   }
   function restore(book, oldPages = []) {
+    study.cancel();
     teaching.cancelText();
     teaching.cancel();
     readerToken++;
@@ -715,7 +772,7 @@
     // Preserve older lessons without removing their already placed board images.
     if (book === undefined)
       book = oldPages.flatMap((p) => p.objects || []).find((o) => o.pdfBook)?.pdfBook || null;
-    loadedBook = book ? { ...book, annotations: clone(book.annotations || {}) } : null;
+    loadedBook = book ? { ...book, annotations: clone(book.annotations || {}), bookmarks: clone(book.bookmarks || []), covers: clone(book.covers || {}) } : null;
     sync();
   }
   async function appendToExport(pdf, book, progress = () => {}) {
@@ -811,8 +868,8 @@
     appendToExport,
     offerDownloads,
     hasBook: () => !!loadedBook,
-    isInteracting: teaching.isInteracting,
-    cancelDrawing: teaching.cancel,
+    isInteracting: () => teaching.isInteracting() || study.isInteracting(),
+    cancelDrawing: () => { teaching.cancel(); study.cancel(); },
   });
   sync();
 })();

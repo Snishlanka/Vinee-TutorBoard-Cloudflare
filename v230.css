@@ -1,0 +1,1024 @@
+﻿/* v2.3.0 — quiet teaching surfaces, book navigation and a local lesson library. */
+#pdf-reader .pdf-reader-body {
+  position: relative;
+}
+#pdf-reader #pdf-book-sidebar[hidden],
+#pdf-reader #pdf-reveal-options[hidden],
+#lesson-library [hidden] {
+  display: none !important;
+}
+#pdf-reader #pdf-book-sidebar {
+  box-sizing: border-box;
+  flex: 0 0 216px;
+  width: 216px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--studio-line);
+  background: var(--studio-surface);
+}
+.pdf-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 8px;
+}
+.pdf-sidebar-head h3,
+.pdf-sidebar-head strong {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: -0.02em;
+}
+:root body #pdf-reader .pdf-sidebar-close {
+  min-height: 28px;
+  width: 28px;
+  padding: 4px;
+  border: 0;
+  font-size: 18px;
+}
+.pdf-sidebar-tabs {
+  display: flex;
+  gap: 3px;
+  margin: 0 10px 10px;
+  padding: 3px;
+  border: 1px solid var(--studio-line);
+  border-radius: 9px;
+  background: var(--studio-soft);
+}
+:root body #pdf-reader .pdf-sidebar-tabs button {
+  flex: 1;
+  padding: 6px;
+  min-height: 29px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 10px;
+}
+:root body #pdf-reader .pdf-sidebar-tabs button[aria-selected='true'] {
+  background: var(--studio-surface);
+  color: var(--studio-accent);
+  font-weight: 650;
+  box-shadow: 0 1px 4px #10251d12;
+}
+.pdf-sidebar-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 2px 12px 14px;
+  scrollbar-width: thin;
+}
+:root body #pdf-reader .pdf-thumb-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 9px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--studio-soft);
+  font-size: 10px;
+  color: var(--studio-muted);
+}
+:root body #pdf-reader .pdf-thumb-card:hover {
+  border-color: var(--studio-muted);
+}
+:root body #pdf-reader .pdf-thumb-card[aria-current='page'] {
+  border-color: var(--studio-accent);
+  background: var(--studio-selected);
+  color: var(--studio-accent);
+}
+.pdf-thumb-card canvas {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: 205px;
+  background: #fff;
+  box-shadow: 0 2px 7px #0002;
+}
+.pdf-thumb-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  font-weight: 600;
+}
+.pdf-thumb-label small {
+  font-size: 9px;
+  font-weight: 400;
+}
+.pdf-bookmark-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 7px;
+  padding: 3px;
+  border: 1px solid var(--studio-line);
+  border-radius: 9px;
+}
+:root body #pdf-reader .pdf-bookmark-item > button:first-child {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border: 0;
+  text-align: left;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.pdf-bookmark-item small {
+  display: block;
+  color: var(--studio-muted);
+  font-size: 9px;
+  margin-top: 4px;
+  font-weight: 400;
+}
+:root body #pdf-reader .pdf-bookmark-item > button:last-child {
+  flex: 0 0 28px;
+  width: 28px;
+  min-height: 28px;
+  padding: 4px;
+  border: 0;
+}
+.pdf-sidebar-empty {
+  text-align: center;
+  color: var(--studio-muted);
+  font-size: 11px;
+  line-height: 1.65;
+  padding: 24px 6px;
+}
+#pdf-bookmark-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--studio-line);
+  background: var(--studio-soft);
+}
+#pdf-bookmark-form label {
+  width: 100%;
+  color: var(--studio-muted);
+  font-size: 10px;
+}
+:root body #pdf-reader #pdf-bookmark-name {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 11px;
+  padding: 8px;
+}
+:root body #pdf-reader #pdf-bookmark-form button {
+  flex: 1;
+  min-height: 29px;
+  padding: 6px 8px;
+  font-size: 10px;
+}
+:root body #pdf-reader #pdf-sidebar-toggle,
+:root body #pdf-reader #pdf-bookmark-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+#pdf-sidebar-toggle svg,
+#pdf-bookmark-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+#pdf-reveal-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--studio-line);
+  background: var(--studio-selected);
+  font-size: 10px;
+}
+#pdf-reveal-options > span:first-child,
+#pdf-reveal-options > p:first-child {
+  flex: 1;
+  min-width: 110px;
+  color: var(--studio-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+:root body #pdf-reader #pdf-reveal-options button {
+  min-height: 27px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+#pdf-reveal-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+:root body #pdf-reader .pdf-answer-cover {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px;
+  overflow: hidden;
+  pointer-events: auto;
+  border: 1.5px solid #147a4b;
+  border-radius: 5px;
+  background: #edf7f0;
+  color: #185c3a;
+  box-shadow: 0 2px 8px #0001;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+:root body #pdf-reader .pdf-answer-cover:hover {
+  background: #e1f1e7;
+  border-color: #10613c;
+}
+.pdf-cover-label {
+  font-size: clamp(10px, 1.05vw, 14px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.pdf-cover-action {
+  font-size: 9px;
+  opacity: 0.8;
+}
+:root body #pdf-reader .pdf-answer-cover.is-revealed {
+  background: transparent;
+  box-shadow: none;
+  border: 1px dashed #147a4b99;
+}
+.pdf-answer-cover.is-revealed .pdf-cover-label,
+.pdf-answer-cover.is-revealed .pdf-cover-action {
+  display: none;
+}
+:root body #pdf-reader .pdf-answer-cover.is-selected {
+  outline: 2px solid #147a4b;
+  outline-offset: 2px;
+}
+#pdf-reveal-layer.pdf-reveal-drawing .pdf-answer-cover {
+  pointer-events: none;
+}
+.pdf-reveal-preview {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 1.5px dashed #147a4b;
+  background: #147a4b20;
+}
+
+/* The library is a workspace, rather than a small confirmation modal. */
+:root body #lesson-library {
+  box-sizing: border-box;
+  width: min(1040px, calc(100vw - 32px));
+  max-width: none;
+  height: min(800px, calc(100dvh - 40px));
+  max-height: none;
+  padding: 0;
+  border: 1px solid var(--studio-line);
+  border-radius: 20px;
+  background: var(--studio-surface);
+  color: var(--studio-text);
+  overflow: hidden;
+  box-shadow: 0 24px 100px #10251d44;
+}
+#lesson-library::backdrop {
+  background: #10251d66;
+  backdrop-filter: blur(5px);
+}
+.lesson-library-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.lesson-library-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 26px 28px 18px;
+}
+.lesson-library-heading {
+  flex: 1;
+  min-width: 0;
+}
+.lesson-library-heading .eyebrow,
+.lesson-library-eyebrow {
+  display: block;
+  color: var(--studio-accent);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.lesson-library-heading h2 {
+  font-size: clamp(23px, 3vw, 30px);
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+  margin: 0 0 8px;
+}
+.lesson-library-heading p {
+  max-width: 530px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--studio-muted);
+  margin: 0;
+}
+:root body #lesson-library .lesson-library-close {
+  min-height: 32px;
+  width: 32px;
+  flex-shrink: 0;
+  padding: 5px;
+  font-size: 21px;
+  border-color: transparent;
+}
+:root body #lesson-library #lesson-library-new {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.lesson-library-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 28px 17px;
+  border-bottom: 1px solid var(--studio-line);
+}
+:root body #lesson-library .lesson-library-search {
+  flex: 1;
+  width: auto;
+  min-width: 160px;
+  min-height: 39px;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  font-size: 12px;
+  background: var(--studio-soft);
+  border: 1px solid var(--studio-line);
+}
+:root body #lesson-library .lesson-library-save {
+  min-height: 39px;
+  padding: 9px 15px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #147a4b;
+  border-color: #147a4b;
+  color: #fff;
+}
+:root body #lesson-library .lesson-library-save:hover {
+  background: #10613c;
+}
+#lesson-library-status {
+  min-height: 18px;
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 0;
+  padding: 10px 28px 3px;
+  color: var(--studio-muted);
+}
+#lesson-library-status:empty {
+  padding-top: 3px;
+  min-height: 0;
+}
+#lesson-library-status[data-error='true'] {
+  color: #b43e26;
+}
+.lesson-library-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-content: start;
+  overflow: auto;
+  overscroll-behavior: contain;
+  flex: 1;
+  min-height: 0;
+  padding: 16px 28px 24px;
+}
+.lesson-card {
+  display: flex;
+  flex-direction: column;
+  align-self: start;
+  min-width: 0;
+  border: 1px solid var(--studio-line);
+  border-radius: 13px;
+  background: var(--studio-surface);
+  overflow: hidden;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.lesson-card:hover {
+  border-color: var(--studio-muted);
+  box-shadow: var(--studio-shadow);
+}
+.lesson-card-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 112px;
+  overflow: hidden;
+  background: var(--studio-soft);
+  border-bottom: 1px solid var(--studio-line);
+}
+.lesson-card-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.lesson-library-card-current {
+  position: absolute;
+  top: 9px;
+  left: 9px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 7px;
+  font-size: 9px;
+  border-radius: 20px;
+  background: #147a4b;
+  color: #fff;
+  box-shadow: 0 1px 4px #0001;
+}
+.lesson-card-body {
+  padding: 13px 13px 10px;
+  min-width: 0;
+  flex: 1;
+}
+.lesson-card-title {
+  display: block;
+  margin: 0 0 5px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.lesson-card-subject {
+  display: inline-block;
+  margin: 0 0 7px;
+  color: var(--studio-accent);
+  font-size: 10px;
+}
+.lesson-card-meta {
+  color: var(--studio-muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+.lesson-card-fields {
+  display: grid;
+  gap: 7px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--studio-line);
+}
+.lesson-card-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--studio-muted);
+  font-size: 9px;
+}
+:root body #lesson-library .lesson-card-fields input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 31px;
+  padding: 6px 8px;
+  font-size: 11px;
+  background: var(--studio-soft);
+  border: 1px solid var(--studio-line);
+  border-radius: 7px;
+}
+.lesson-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 13px 13px;
+}
+:root body #lesson-library .lesson-card-actions button {
+  min-height: 32px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+:root body #lesson-library .lesson-card-actions [data-lesson-open] {
+  flex: 1;
+  background: var(--studio-selected);
+  border-color: transparent;
+  color: var(--studio-accent);
+  font-weight: 600;
+}
+:root body #lesson-library .lesson-card-actions [data-lesson-delete] {
+  font-size: 10px;
+  color: var(--studio-muted);
+}
+:root body #lesson-library .lesson-card-actions [data-lesson-delete]:hover {
+  color: #b43e26;
+  background: #fff0ec;
+  border-color: #e9b5a8;
+}
+.lesson-library-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  padding: 20px;
+  text-align: center;
+  color: var(--studio-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.lesson-library-empty svg {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 15px;
+  color: var(--studio-accent);
+}
+.lesson-library-empty h3 {
+  margin: 0 0 7px;
+  color: var(--studio-text);
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+.lesson-library-empty p {
+  max-width: 340px;
+  margin: 0;
+}
+.lesson-library-footnote {
+  flex-shrink: 0;
+  border-top: 1px solid var(--studio-line);
+  background: var(--studio-soft);
+  color: var(--studio-muted);
+  padding: 11px 28px;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.6;
+}
+:root body #lesson-library-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+#lesson-library-open svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 900px) {
+  .lesson-library-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  #pdf-reader .pdf-reader-body {
+    isolation: isolate;
+  }
+  #pdf-reader #pdf-book-sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 12;
+    width: 196px;
+    max-width: calc(100% - 44px);
+    box-shadow: 8px 0 30px #0003;
+  }
+  #pdf-reader .pdf-reader-header {
+    flex-wrap: wrap;
+  }
+  #pdf-reader #pdf-sidebar-toggle,
+  #pdf-reader #pdf-bookmark-toggle {
+    min-height: 28px;
+  }
+  :root body #lesson-library {
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+    border-radius: 14px;
+  }
+  .lesson-library-header {
+    padding: 20px 18px 15px;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+  .lesson-library-heading {
+    flex-basis: calc(100% - 45px);
+  }
+  .lesson-library-close {
+    order: 1;
+  }
+  #lesson-library-new {
+    order: 2;
+  }
+  .lesson-library-toolbar {
+    padding: 0 18px 14px;
+    gap: 8px;
+  }
+  #lesson-library-status {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .lesson-library-grid {
+    padding: 14px 18px 20px;
+    gap: 12px;
+  }
+  .lesson-library-footnote {
+    padding: 10px 18px;
+  }
+}
+@media (max-width: 460px) {
+  .lesson-library-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lesson-card-preview {
+    height: 130px;
+  }
+  :root body #lesson-library .lesson-library-save {
+    flex: 1;
+  }
+  :root body #lesson-library .lesson-library-search {
+    flex-basis: 100%;
+  }
+  #pdf-reader .pdf-reader-header .pdf-reader-zoom {
+    order: 4;
+    flex-basis: 100%;
+    justify-content: center;
+  }
+  .pdf-cover-action {
+    display: none;
+  }
+}
+@media (pointer: coarse) {
+  :root body #pdf-reader .pdf-sidebar-tabs button,
+  :root body #pdf-reader .pdf-sidebar-close,
+  :root body #pdf-reader .pdf-bookmark-item > button:last-child {
+    min-height: 36px;
+  }
+  :root body #pdf-reader #pdf-reveal-options button {
+    min-height: 34px;
+  }
+  :root body #lesson-library .lesson-card-actions button {
+    min-height: 38px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lesson-card {
+    transition: none;
+  }
+}
+/* DOM alignment and gesture state: revealed answers remain writable. */
+:root body #pdf-reader #pdf-reveal-layer.is-drawing {
+  pointer-events: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+:root body #pdf-reader .pdf-answer-cover.is-revealed {
+  pointer-events: none;
+}
+:root body #pdf-reader #pdf-reveal-layer.is-drawing .pdf-answer-cover {
+  pointer-events: auto;
+}
+.pdf-cover-draft {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 1.5px dashed #147a4b;
+  background: #147a4b20;
+}
+.pdf-cover-export-note {
+  flex-basis: 100%;
+  color: var(--studio-muted);
+  font-size: 9px;
+}
+#pdf-study-status {
+  margin: 0;
+  padding: 0 11px 8px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--studio-muted);
+}
+#pdf-study-status:empty {
+  display: none;
+}
+:root body #pdf-reader #pdf-more-pages {
+  margin: 4px 11px 10px;
+  padding: 7px;
+  font-size: 10px;
+  min-height: 30px;
+}
+.pdf-sidebar-head .pdf-eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 8px;
+  letter-spacing: 1.2px;
+  color: var(--studio-muted);
+}
+.pdf-bookmark-item > button:first-child strong {
+  display: block;
+  font-size: 11px;
+}
+.pdf-bookmark-item > button:first-child span {
+  display: block;
+  margin-top: 4px;
+  color: var(--studio-muted);
+  font-size: 9px;
+}
+:root body #pdf-reader .pdf-bookmark-item > button[aria-current='page'] {
+  background: var(--studio-selected);
+  color: var(--studio-accent);
+}
+#pdf-bookmark-form > div {
+  display: flex;
+  width: 100%;
+  gap: 5px;
+}
+.pdf-thumb-card:not(.is-ready) canvas {
+  width: 100%;
+  height: 160px;
+  background: linear-gradient(110deg, var(--studio-surface), var(--studio-soft));
+}
+.pdf-thumb-card.is-unavailable canvas {
+  height: 80px;
+}
+:root body #lesson-library .lesson-library-header {
+  position: static;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  padding: 26px 28px 18px;
+  gap: 16px;
+  min-height: 0;
+  width: auto;
+  border: 0;
+  background: var(--studio-surface);
+  box-shadow: none;
+}
+.lesson-library-search-label {
+  display: flex;
+  flex: 1;
+  min-width: 160px;
+}
+:root body #lesson-library .lesson-library-search {
+  width: 100%;
+}
+:root body #lesson-library .lesson-library-footnote {
+  position: static;
+  display: block;
+  padding: 11px 28px;
+  font-size: 10px;
+  border-top: 1px solid var(--studio-line);
+  background: var(--studio-soft);
+}
+#lesson-library-status.state-error {
+  color: #b43e26;
+}
+[data-theme='dark'] #lesson-library-status.state-error {
+  color: #ffb39d;
+}
+.lesson-card-fields {
+  display: block;
+}
+.lesson-card-fields summary {
+  font-size: 10px;
+  color: var(--studio-muted);
+  cursor: pointer;
+  padding: 2px 0;
+}
+.lesson-card-fields[open] summary {
+  margin-bottom: 9px;
+}
+.lesson-card-fields label + label {
+  margin-top: 7px;
+}
+.lesson-card-meta {
+  margin: 0;
+}
+.lesson-card-placeholder {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--studio-selected);
+  color: var(--studio-accent);
+  font-size: 22px;
+  font-weight: 700;
+}
+.lesson-card-placeholder-label {
+  margin-left: 10px;
+  color: var(--studio-muted);
+  font-size: 10px;
+}
+#lesson-library .lesson-library-empty {
+  flex: 1;
+  min-height: 0;
+}
+#lesson-library .lesson-library-empty > span {
+  display: grid;
+  place-items: center;
+  width: 55px;
+  height: 55px;
+  margin-bottom: 16px;
+  background: var(--studio-selected);
+  color: var(--studio-accent);
+  font-size: 30px;
+  border-radius: 16px;
+}
+@media (max-width: 700px) {
+  :root body #lesson-library .lesson-library-header {
+    padding: 20px 18px 15px;
+    gap: 9px;
+    flex-wrap: nowrap;
+  }
+  :root body #lesson-library .lesson-library-footnote {
+    padding: 10px 18px;
+  }
+}
+@media (max-width: 460px) {
+  .lesson-library-search-label {
+    flex-basis: 100%;
+  }
+}
+#lesson-library .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* Bounded thumbnail windows retain both directions without stealing list space. */
+:root body #pdf-reader #pdf-earlier-pages {
+  flex: 0 0 auto;
+  margin: 0 11px 7px;
+  padding: 7px;
+  font-size: 10px;
+  min-height: 30px;
+}
+:root body #pdf-reader #pdf-more-pages {
+  flex: 0 0 auto;
+}
+:root body #pdf-reader #pdf-earlier-pages[hidden],
+:root body #pdf-reader #pdf-more-pages[hidden] {
+  display: none !important;
+}
+.pdf-sidebar-list:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: -2px;
+}
+#lesson-library .lesson-card-fields summary:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+@media (pointer: coarse) {
+  :root body #pdf-reader #pdf-earlier-pages,
+  :root body #pdf-reader #pdf-more-pages,
+  :root body #lesson-library .lesson-library-close {
+    min-height: 36px;
+  }
+}
+@media (min-width: 901px) {
+  .pdf-cover-export-note {
+    flex-basis: auto;
+    margin-left: 5px;
+    white-space: nowrap;
+  }
+}
+/* A secondary creation action never competes with the library heading or close control. */
+:root body #lesson-library #lesson-library-new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 3px;
+  background: var(--studio-soft);
+}
+:root body #lesson-library #lesson-library-new::before {
+  content: '+';
+  font-size: 16px;
+  line-height: 1;
+  color: var(--studio-accent);
+}
+@media (max-width: 700px) {
+  :root body #lesson-library .lesson-library-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 10px;
+    row-gap: 9px;
+  }
+  #lesson-library .lesson-library-heading {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  #lesson-library .lesson-library-close {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  :root body #lesson-library #lesson-library-new {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+    margin-top: 0;
+  }
+}
+/* Page turns live in quiet side rails, never above PDF text or ink. */
+#pdf-reader .pdf-reading-area {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  container: pdf-reading / inline-size;
+  background: #e8ebee;
+}
+[data-theme='dark'] #pdf-reader .pdf-reading-area {
+  background: #111719;
+}
+#pdf-reader .pdf-reading-area > .pdf-preview-stage {
+  flex: 1;
+  min-width: 0;
+}
+:root body #pdf-reader .pdf-side-turn {
+  display: inline-flex;
+  flex: 0 0 40px;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  width: 40px;
+  min-height: 68px;
+  margin: 0 6px;
+  padding: 10px 4px;
+  border: 1px solid var(--studio-line);
+  border-radius: 14px;
+  background: var(--studio-surface);
+  color: var(--studio-muted);
+  box-shadow: 0 3px 12px #10251d0b;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    color 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease;
+}
+#pdf-reader .pdf-side-turn svg {
+  width: 23px;
+  height: 23px;
+  flex-shrink: 0;
+}
+#pdf-reader .pdf-side-turn span {
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+}
+:root body #pdf-reader .pdf-side-turn:not(:disabled):hover {
+  background: var(--studio-selected);
+  color: var(--studio-accent);
+  border-color: var(--studio-accent);
+}
+:root body #pdf-reader .pdf-side-turn:not(:disabled):active {
+  background: var(--studio-soft);
+}
+:root body #pdf-reader .pdf-side-turn:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+:root body #pdf-reader .pdf-side-turn:disabled {
+  opacity: 0.28;
+  box-shadow: none;
+  cursor: default;
+}
+/* Narrow readers use the existing, full-size footer navigation instead. */
+@container pdf-reading (max-width: 620px) {
+  :root body #pdf-reader .pdf-side-turn {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  :root body #pdf-reader .pdf-side-turn {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root body #pdf-reader .pdf-side-turn {
+    transition: none;
+  }
+}
+/* Use one set of page-turn buttons at a time; retain the centered page field. */
+:root body #pdf-reader.pdf-side-navigation #pdf-reader-prev,
+:root body #pdf-reader.pdf-side-navigation #pdf-reader-next { display: none; }
+#pdf-reader .pdf-reader-footer .pdf-reader-paging { grid-column: 2; }
+#pdf-reader .pdf-reader-footer .pdf-reader-next-actions { grid-column: 3; }

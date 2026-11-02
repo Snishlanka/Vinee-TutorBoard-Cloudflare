@@ -40,6 +40,15 @@ window.TutorDraftStore = class TutorDraftStore {
           savedAt: record.savedAt,
           title: record.snapshot?.lesson?.title || 'Untitled lesson',
           pageCount: record.snapshot?.lesson?.pages?.length || 0,
+          subject: typeof record.subject === 'string' ? record.subject.slice(0, 80) : '',
+          lastOpenedAt: record.lastOpenedAt || record.savedAt,
+          thumbnail:
+            typeof record.thumbnail === 'string' &&
+            record.thumbnail.startsWith('data:image/jpeg;base64,') &&
+            record.thumbnail.length < 100000
+              ? record.thumbnail
+              : '',
+          hasBook: !!record.snapshot?.lesson?.loadedPDF,
         });
         cursor.continue();
       };

@@ -128,6 +128,51 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       await p.mouse.up();
     }
     await ready(false);
+    assert.equal(await p.locator('#pdf-side-prev').isDisabled(), true);
+    assert.equal(await p.locator('#pdf-side-next').isVisible(), true);
+    assert.equal(await p.locator('#pdf-reader-next').isVisible(), false);
+    assert.equal(await p.locator('#pdf-reader-prev').isVisible(), false);
+    const sideLayout = await p.evaluate(() => {
+      const prev = document.getElementById('pdf-side-prev').getBoundingClientRect();
+      const next = document.getElementById('pdf-side-next').getBoundingClientRect();
+      const stage = document.getElementById('pdf-preview-stage').getBoundingClientRect();
+      return {
+        outside: prev.right <= stage.left && next.left >= stage.right,
+        centered: Math.abs(prev.top + prev.height / 2 - stage.top - stage.height / 2) < 2,
+      };
+    });
+    assert.equal(
+      sideLayout.outside,
+      true,
+      'Side navigation never covers the reading/drawing surface'
+    );
+    assert.equal(
+      sideLayout.centered,
+      true,
+      'Side page turns remain centered in the visible reading area'
+    );
+    assert.equal(
+      await p.evaluate(() => {
+        document.getElementById('pdf-side-next').click();
+        return (
+          document.getElementById('pdf-side-prev').disabled &&
+          document.getElementById('pdf-side-next').disabled
+        );
+      }),
+      true,
+      'Both side controls disable while a page loads'
+    );
+    await ready(false);
+    assert.equal(await p.locator('#pdf-page-number').inputValue(), '2');
+    await p.locator('#pdf-side-next').click();
+    await ready(false);
+    assert.equal(await p.locator('#pdf-side-next').isDisabled(), true);
+    await p.locator('#pdf-side-prev').click();
+    await ready(false);
+    await p.locator('#pdf-side-prev').focus();
+    await p.keyboard.press('Enter');
+    await ready(false);
+    assert.equal(await p.locator('#pdf-page-number').inputValue(), '1');
     assert.equal(await p.locator('[data-pdf-tool="laser"]').getAttribute('aria-pressed'), 'true');
     assert.equal(await p.locator('#pdf-fit-window').getAttribute('aria-pressed'), 'true');
     const chromeHeight = await p.evaluate(
@@ -275,7 +320,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     );
     await p.locator('#pdf-zoom-fit').click();
     assert.equal(await p.locator('#pdf-zoom-fit').textContent(), 'Fit page');
-    await p.locator('#pdf-reader-next').click();
+    await p.locator('#pdf-side-next').click();
     await ready();
     await draw('highlighter', [0.1, 0.45], [0.75, 0.45]);
     await draw('text', [0.18, 0.62], [0.78, 0.83]);
@@ -299,9 +344,10 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await p.locator('#pdf-reader-fullscreen').click();
     await p.waitForFunction(() => document.fullscreenElement?.id === 'pdf-reader-shell');
     assert.equal(await p.locator('#pdf-teaching-toolbar').isVisible(), true);
+    assert.equal(await p.locator('#pdf-side-next').isVisible(), true);
     if (process.env.PREVIEW_PATH)
       await p.screenshot({ path: process.env.PREVIEW_PATH + '-fullscreen.png' });
-    await p.locator('#pdf-reader-next').click();
+    await p.locator('#pdf-side-next').click();
     await ready();
     await draw('rect', [0.15, 0.25], [0.55, 0.45]);
     assert.equal(await p.locator('#pdf-object-panel').isVisible(), true);
@@ -483,6 +529,9 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await p.setViewportSize({ width: 390, height: 844 });
     await p.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
     await p.waitForTimeout(200);
+    assert.equal(await p.locator('#pdf-side-prev').isVisible(), false);
+    assert.equal(await p.locator('#pdf-side-next').isVisible(), false);
+    assert.equal(await p.locator('#pdf-reader-next').isVisible(), true);
     assert.equal(
       await p.evaluate(() => {
         const r = document.getElementById('pdf-reader').getBoundingClientRect();

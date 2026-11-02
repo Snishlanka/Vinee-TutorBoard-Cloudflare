@@ -195,6 +195,7 @@ function createPDFTeaching({ dialog, frame, getReader, changed, crop }) {
     closeMenus();
     editing.sync();
     paint();
+    dialog.dispatchEvent(new CustomEvent('pdftoolchange', { detail: name }));
   }
   toolbar
     .querySelectorAll('[data-pdf-tool]')
@@ -701,5 +702,6 @@ function createPDFTeaching({ dialog, frame, getReader, changed, crop }) {
     cancelText: editing.cancel,
     isInteracting: () => !!active,
     selectTool: setTool,
+    getTool: () => currentTool,
   };
 }

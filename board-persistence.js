@@ -72,6 +72,11 @@ window.TutorBoard = {
       typeof data.title === 'string' ? data.title.slice(0, 100) : 'Untitled lesson';
     $('tutor-name').value = typeof data.tutorName === 'string' ? data.tutorName.slice(0, 100) : '';
     $('text-editor').hidden = true;
+    editingText = null;
+    pendingTextRuns = [];
+    selected = null;
+    preview = null;
+    positionTextNext();
     images.clear();
     globalThis.TutorPDF?.restore(data.loadedPDF, data.pages);
     update();

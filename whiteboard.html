@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="pwa.css" />
     <link rel="stylesheet" href="studio.css" />
+    <link rel="stylesheet" href="v230.css" />
   </head>
   <body class="pages-hidden">
     <header>
@@ -39,6 +40,7 @@
         <details class="studio-menu" id="file-menu"><summary>File <span aria-hidden="true">⌄</span></summary><div class="studio-popover file-actions">
           <span class="menu-caption">LESSON FILES</span>
           <button id="open">Open lesson</button><button id="save">Save lesson</button>
+          <button id="lesson-library-open" type="button">Lesson library</button>
           <span class="menu-caption">EXPORT</span>
           <button id="export-pdf">Export lesson PDF</button><button id="export">Export page PNG</button>
         </div></details>
@@ -605,9 +607,11 @@ x^2</textarea>
     <script src="vendor/pdfjs/pdf.worker.js"></script>
     <script src="pdf-editing.js"></script>
     <script src="pdf-teaching.js"></script>
+    <script src="pdf-study.js"></script>
     <script src="pdf-tools.js"></script>
     <script src="board-persistence.js"></script>
     <script src="draft-store.js"></script>
+    <script src="lesson-library.js"></script>
     <script src="pwa.js"></script>
   </body>
 </html>
